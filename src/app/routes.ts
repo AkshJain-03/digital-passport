@@ -19,7 +19,6 @@ export const ROUTES = {
   CREDENTIAL_DETAIL:   'CredentialDetail',
   PRODUCT_DETAIL:      'ProductDetail',
   SETTINGS:            'Settings',
-  VISION:              'Vision',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
@@ -42,5 +41,4 @@ export type RootStackParamList = {
   [ROUTES.CREDENTIAL_DETAIL]:  { credentialId: string };
   [ROUTES.PRODUCT_DETAIL]:     { productId: string };
   [ROUTES.SETTINGS]:           undefined;
-  [ROUTES.VISION]:             undefined;
 };
