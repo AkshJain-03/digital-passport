@@ -47,7 +47,6 @@ import { HandshakeScreen }        from '../screens/handshake/HandshakeScreen';
 import { SettingsScreen }         from '../screens/settings/SettingsScreen';
 import { CredentialListScreen }   from '../screens/credentials/CredentialListScreen';
 import { ProductDetailScreen }   from '../screens/products/ProductDetailScreen';
-import { VisionScreen }           from '../screens/vision/VisionScreen';
 
 import { ROUTES, type TabParamList, type RootStackParamList } from './routes';
 
@@ -244,7 +243,6 @@ export const AppNavigator: React.FC = () => (
       <Stack.Screen name={ROUTES.SETTINGS}         component={SettingsScreen} />
       <Stack.Screen name={ROUTES.CREDENTIAL_LIST}  component={CredentialListScreen} />
       <Stack.Screen name={ROUTES.PRODUCT_DETAIL}   component={ProductDetailScreen} />
-      <Stack.Screen name={ROUTES.VISION}            component={VisionScreen} />
     </Stack.Navigator>
   </NavigationContainer>
 );
