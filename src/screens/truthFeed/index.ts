@@ -1,0 +1,1 @@
+export { TruthFeedScreen } from './TruthFeedScreen';

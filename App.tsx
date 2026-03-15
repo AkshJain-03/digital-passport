@@ -1,53 +1,42 @@
+/**
+ * App.tsx — Root entry point
+ *
+ * Sequence:
+ *   1. AppProviders wraps everything with gesture + safe-area context
+ *   2. useAppInit opens SQLite, runs migrations, seeds dev data
+ *   3. Splash screen is held until DB is ready
+ *   4. AppNavigator renders the full navigation tree
+ */
+
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { AppProviders } from './src/app/providers/AppProviders';
+import { AppNavigator } from './src/app/AppNavigator';
+import { useAppInit }   from './src/hooks/useAppInit';
 
-import Home from './src/screens/Home';
-import Verify from './src/screens/Verify';
-import Passport from './src/screens/Passport';
-import Scan from './src/screens/Scan';
-import Handshake from './src/screens/Handshake';
-import TruthFeed from './src/feed/TruthFeed';
+// Inline splash so we don't need a separate file
+const SplashGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { ready } = useAppInit();
+  if (!ready) {
+    return (
+      <View style={splash.root}>
+        <ActivityIndicator size="large" color="#0A84FF" />
+      </View>
+    );
+  }
+  return <>{children}</>;
+};
 
+const splash = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#060E1C', alignItems: 'center', justifyContent: 'center' },
+});
 
-const Stack = createNativeStackNavigator();
+const App: React.FC = () => (
+  <AppProviders>
+    <SplashGate>
+      <AppNavigator />
+    </SplashGate>
+  </AppProviders>
+);
 
-export default function App() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen
-          name="Home"
-          component={Home}
-          options={{ title: 'Sovereign Trust Passport' }}
-        />
-        <Stack.Screen
-          name="Verify"
-          component={Verify}
-          options={{ title: 'Verify Identity' }}
-        />
-        <Stack.Screen
-          name="Passport"
-          component={Passport}
-          options={{ title: 'My Passport' }}
-        />
-        <Stack.Screen
-          name="Scan"
-          component={Scan}
-          options={{ title: 'Scan & Verify' }}
-        />
-        <Stack.Screen
-          name="Handshake"
-          component={Handshake}
-          options={{ title: 'Trust Handshake' }}
-        />
-        <Stack.Screen
-          name="TruthFeed"
-          component={TruthFeed}
-          options={{ title: 'Truth Feed' }}
-        />
-
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-}
+export default App;

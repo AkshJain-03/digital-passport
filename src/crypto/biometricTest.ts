@@ -1,16 +1,41 @@
-import ReactNativeBiometrics from 'react-native-biometrics';
+/**
+ * Biometric Test Utility
+ *
+ * Development/diagnostic utility to check biometric hardware status.
+ * Safe to call on app launch — never triggers an authentication prompt.
+ *
+ * Used in the Settings screen diagnostic panel.
+ */
 
-export async function forceFaceID(): Promise<boolean> {
-  const rnBiometrics = new ReactNativeBiometrics();
+import ReactNativeBiometrics, { BiometryTypes } from 'react-native-biometrics';
 
-  const result = await rnBiometrics.simplePrompt({
-    promptMessage: 'Authenticate with Sovereign Trust Passport',
-  });
+const rnBiometrics = new ReactNativeBiometrics();
 
-  // ✅ THIS IS THE KEY FIX
-  if (result.success === true) {
-    return true;
-  }
-
-  return false;
+export interface BiometricTestResult {
+  available:     boolean;
+  biometryType:  string;
+  keysExist:     boolean;
+  error?:        string;
 }
+
+export const runBiometricTest = async (): Promise<BiometricTestResult> => {
+  try {
+    const { available, biometryType } = await rnBiometrics.isSensorAvailable();
+    const { keysExist } = await rnBiometrics.biometricKeysExist();
+
+    const typeLabel =
+      biometryType === BiometryTypes.FaceID    ? 'Face ID'    :
+      biometryType === BiometryTypes.TouchID   ? 'Touch ID'   :
+      biometryType === BiometryTypes.Biometrics? 'Biometrics' :
+      'None';
+
+    return { available, biometryType: typeLabel, keysExist };
+  } catch (e) {
+    return {
+      available:    false,
+      biometryType: 'Unknown',
+      keysExist:    false,
+      error:        (e as Error).message,
+    };
+  }
+};
