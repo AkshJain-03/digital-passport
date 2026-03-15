@@ -1,12 +1,13 @@
 /**
  * VerifyScreen
  *
- * Manual verification with three tabs:
- *   • Credential — verify by ID or DID
- *   • Product    — verify by serial number or ID
- *   • DID        — verify an issuer or person's DID
+ * Manual verification — three tabs:
+ *   • Credential   verify by ID / DID
+ *   • Product      verify by serial or product ID
+ *   • DID          resolve an issuer or person's DID
  *
- * Each tab: text input → verify button → animated result reveal.
+ * Each tab: text input → verify → animated 5-step pipeline → result.
+ * Result card has 3-layer progressive reveal.
  */
 
 import React, { useCallback, useRef, useState } from 'react';
@@ -22,29 +23,65 @@ import {
   View,
 } from 'react-native';
 
-import { colors }                  from '../../theme/colors';
-import { radius }                  from '../../theme/radius';
-import { spacing }                 from '../../theme/spacing';
-import { typography }              from '../../theme/typography';
-import { GlassCard }               from '../../components/common/GlassCard';
-import { AppButton }               from '../../components/common/AppButton';
-import { AppBadge }                from '../../components/common/AppBadge';
-import { LoadingState }            from '../../components/common/LoadingState';
-import { EmptyState }              from '../../components/common/EmptyState';
-import { verificationRouter }      from '../../domain/verification/verificationRouter';
+import { colors }             from '../../theme/colors';
+import { radius }             from '../../theme/radius';
+import { GlassCard }          from '../../components/common/GlassCard';
+import { AppButton }          from '../../components/common/AppButton';
+import { AppBadge }           from '../../components/common/AppBadge';
+import { LoadingState }       from '../../components/common/LoadingState';
+import { verificationRouter } from '../../domain/verification/verificationRouter';
+import { SCAN_TYPE_META }     from '../../domain/verification/verificationTypes';
 import type { VerificationResult, VerificationSubjectType } from '../../domain/verification/verificationTypes';
-import type { TrustState }         from '../../theme/colors';
+import type { TrustState }    from '../../theme/colors';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const t = (require('../../theme/typography').typography) as Record<string, any>;
+const typo = {
+  title2:   t.title2   ?? {},
+  title3:   t.title3   ?? {},
+  headline: t.headlineSm ?? t.headline ?? {},
+  body:     t.bodySm   ?? t.body      ?? {},
+  caption:  t.captionSm ?? t.caption  ?? {},
+  label:    t.label    ?? {},
+  button:   t.buttonSm ?? t.button    ?? {},
+  mono:     t.mono     ?? {},
+};
+
+// ─── Tab config ───────────────────────────────────────────────────────────────
 
 type Tab = 'credential' | 'product' | 'did';
 
-const TABS: { key: Tab; label: string; placeholder: string; hint: string }[] = [
-  { key: 'credential', label: 'Credential', placeholder: 'cred-001',
-    hint: 'Enter credential ID' },
-  { key: 'product',    label: 'Product',    placeholder: 'C02XK1J5JGH5',
-    hint: 'Enter serial number or product ID' },
-  { key: 'did',        label: 'DID',        placeholder: 'did:sov:…',
-    hint: 'Enter a DID to verify' },
+const TABS: { key: Tab; label: string; emoji: string; placeholder: string; hint: string }[] = [
+  {
+    key:         'credential',
+    label:       'Credential',
+    emoji:       '🪪',
+    placeholder: 'cred-sovereign-demo-001',
+    hint:        'Enter Credential ID',
+  },
+  {
+    key:         'product',
+    label:       'Product',
+    emoji:       '📦',
+    placeholder: 'prod-macbook-pro-m3-001',
+    hint:        'Enter Product ID or serial',
+  },
+  {
+    key:         'did',
+    label:       'DID',
+    emoji:       '🔑',
+    placeholder: 'did:sov:7Tq3kTmNpL8vXoAe9fP2Yz',
+    hint:        'Enter a DID to resolve',
+  },
 ];
+
+const DEFAULT_INPUT: Record<Tab, string> = {
+  credential: 'cred-sovereign-demo-001',
+  product:    'prod-macbook-pro-m3-001',
+  did:        'did:sov:7Tq3kTmNpL8vXoAe9fP2Yz',
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export const VerifyScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('credential');
@@ -55,11 +92,10 @@ export const VerifyScreen: React.FC = () => {
   const [tapLayer,  setTapLayer]  = useState(0);
 
   const resultFade = useRef(new Animated.Value(0)).current;
-
-  const tabConfig = TABS.find(t => t.key === activeTab)!;
+  const tabConfig  = TABS.find(tb => tb.key === activeTab)!;
 
   const handleVerify = useCallback(async () => {
-    const query = input.trim() || defaultInput(activeTab);
+    const query = input.trim() || DEFAULT_INPUT[activeTab];
     setLoading(true);
     setResult(null);
     setError(null);
@@ -72,7 +108,9 @@ export const VerifyScreen: React.FC = () => {
         subjectId:   query,
       });
       setResult(res);
-      Animated.spring(resultFade, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 4 }).start();
+      Animated.spring(resultFade, {
+        toValue: 1, useNativeDriver: true, speed: 14, bounciness: 4,
+      }).start();
     } catch (e) {
       setError((e as Error).message ?? 'Verification failed');
     } finally {
@@ -89,39 +127,46 @@ export const VerifyScreen: React.FC = () => {
   };
 
   const trustColor = result
-    ? colors.trust[result.trustState as TrustState]?.solid ?? colors.brand.primary
+    ? (colors.trust[result.trustState as TrustState]?.solid ?? colors.brand.primary)
     : colors.brand.primary;
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
-        {/* Header */}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={styles.header}>
           <Text style={styles.title}>Verify</Text>
-          <Text style={styles.sub}>Verify credentials, products, or identities manually</Text>
+          <Text style={styles.sub}>Verify credentials, products, and identities</Text>
         </View>
 
-        {/* Tab switcher */}
+        {/* ── Tab bar ─────────────────────────────────────────────────────── */}
         <View style={styles.tabs}>
-          {TABS.map(tab => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => handleTabChange(tab.key)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {TABS.map(tab => {
+            const isActive = tab.key === activeTab;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tab, isActive && styles.tabActive]}
+                onPress={() => handleTabChange(tab.key)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.tabEmoji}>{tab.emoji}</Text>
+                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* Input */}
-        <GlassCard style={styles.inputCard}>
+        {/* ── Input card ──────────────────────────────────────────────────── */}
+        <GlassCard style={styles.inputCard} padding="md">
           <Text style={styles.inputLabel}>{tabConfig.hint.toUpperCase()}</Text>
           <TextInput
             style={styles.input}
@@ -136,64 +181,86 @@ export const VerifyScreen: React.FC = () => {
             selectionColor={colors.brand.primary}
           />
           <AppButton
-            label="Verify"
+            label={loading ? 'Verifying…' : `Verify ${tabConfig.label}`}
             onPress={handleVerify}
             loading={loading}
             variant="primary"
             fullWidth
-            style={styles.verifyBtn}
           />
         </GlassCard>
 
-        {/* Loading */}
+        {/* ── Loading pipeline ─────────────────────────────────────────────── */}
         {loading && (
-          <LoadingState
-            mode="verification"
-            steps={['Looking up record', 'Checking signature', 'Checking issuer', 'Evaluating trust']}
-            activeStep={1}
-            completedStep={0}
-          />
+          <GlassCard style={styles.loadingCard} padding="md">
+            {SCAN_TYPE_META[activeTab].steps.map((step, i) => (
+              <View key={step} style={styles.stepRow}>
+                <View style={[styles.stepDot, { backgroundColor: colors.brand.primaryDim, borderColor: colors.brand.primary }]}>
+                  <Text style={styles.stepIcon}>◌</Text>
+                </View>
+                <Text style={styles.stepLabel}>{step}</Text>
+              </View>
+            ))}
+          </GlassCard>
         )}
 
-        {/* Error */}
+        {/* ── Error ───────────────────────────────────────────────────────── */}
         {error && !loading && (
-          <EmptyState icon="⚠" title="Verification failed" description={error} glowState="suspicious" />
+          <GlassCard glowState="suspicious" padding="md" style={styles.errorCard}>
+            <Text style={styles.errorIcon}>⚠</Text>
+            <Text style={styles.errorTitle}>Verification Failed</Text>
+            <Text style={styles.errorBody}>{error}</Text>
+          </GlassCard>
         )}
 
-        {/* Result */}
+        {/* ── Result card (3-layer) ────────────────────────────────────────── */}
         {result && !loading && (
           <Animated.View style={{ opacity: resultFade }}>
             <GlassCard
               glowState={result.trustState as TrustState}
+              animateGlow
+              padding="md"
               revealLayers={3}
               onTapLayer={setTapLayer}
               style={styles.resultCard}
             >
-              {/* Header row */}
+              {/* Top: badge + duration */}
               <View style={styles.resultTop}>
-                <AppBadge label={result.trustState} variant={result.trustState as TrustState} dot size="lg" />
-                <Text style={styles.resultDuration}>{result.durationMs}ms</Text>
+                <AppBadge
+                  label={result.trustState}
+                  variant={result.trustState as TrustState}
+                  dot
+                  size="lg"
+                />
+                <Text style={styles.durationText}>{result.durationMs}ms</Text>
               </View>
-              <Text style={styles.resultSummary}>{result.summary}</Text>
+
+              <Text style={styles.summary}>{result.summary}</Text>
 
               {/* Layer 1: checks */}
               {tapLayer >= 1 && (
                 <View style={styles.checksWrap}>
                   <View style={styles.divider} />
-                  <Text style={styles.sectionLabel}>CHECKS</Text>
-                  {result.checks.map(c => (
-                    <View key={c.id} style={styles.checkRow}>
-                      <Text style={[styles.checkIcon, {
-                        color: c.outcome === 'pass' ? colors.trust.verified.solid :
-                               c.outcome === 'fail' ? colors.trust.revoked.solid  :
-                               colors.trust.suspicious.solid,
-                      }]}>{c.outcome === 'pass' ? '✓' : c.outcome === 'fail' ? '✕' : '⚠'}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.checkLabel}>{c.label}</Text>
-                        {c.detail && <Text style={styles.checkDetail}>{c.detail}</Text>}
+                  <Text style={styles.sectionLabel}>VERIFICATION CHECKS</Text>
+                  {result.checks.map(c => {
+                    const isPass = c.outcome === 'pass';
+                    const isFail = c.outcome === 'fail';
+                    const cc     = isPass ? colors.trust.verified.solid
+                                 : isFail ? colors.trust.revoked.solid
+                                 : colors.trust.suspicious.solid;
+                    return (
+                      <View key={c.id} style={styles.checkRow}>
+                        <View style={[styles.checkDot, { borderColor: cc, backgroundColor: `${cc}18` }]}>
+                          <Text style={[styles.checkIcon, { color: cc }]}>
+                            {isPass ? '✓' : isFail ? '✕' : '⚠'}
+                          </Text>
+                        </View>
+                        <View style={styles.checkBody}>
+                          <Text style={styles.checkLabel}>{c.label}</Text>
+                          {c.detail ? <Text style={styles.checkDetail}>{c.detail}</Text> : null}
+                        </View>
                       </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
 
@@ -202,15 +269,17 @@ export const VerifyScreen: React.FC = () => {
                 <View style={styles.checksWrap}>
                   <View style={styles.divider} />
                   <Text style={styles.sectionLabel}>METADATA</Text>
-                  <MetaRow label="Subject ID"   value={result.subjectId.slice(0, 28) + '…'} />
+                  <MetaRow label="Subject ID"   value={result.subjectId.length > 28 ? `${result.subjectId.slice(0, 26)}…` : result.subjectId} />
                   <MetaRow label="Subject type" value={result.subjectType} />
                   <MetaRow label="Verified at"  value={new Date(result.verifiedAt).toLocaleTimeString()} />
+                  <MetaRow label="Duration"     value={`${result.durationMs}ms`} />
                 </View>
               )}
 
               <Text style={styles.tapHint}>
-                {tapLayer === 0 ? 'Tap for check details'
-                  : tapLayer === 1 ? 'Tap for metadata' : 'Tap to collapse'}
+                {tapLayer === 0 ? '↓ Tap for checks'
+                  : tapLayer === 1 ? '↓ Tap for metadata'
+                  : '↑ Tap to collapse'}
               </Text>
             </GlassCard>
           </Animated.View>
@@ -222,61 +291,118 @@ export const VerifyScreen: React.FC = () => {
   );
 };
 
+// ── Sub-component ─────────────────────────────────────────────────────────────
+
 const MetaRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-    <Text style={{ ...typography.caption, color: colors.text.quaternary }}>{label}</Text>
-    <Text style={{ ...typography.caption, color: colors.text.secondary }}>{value}</Text>
+  <View style={metaRowStyles.row}>
+    <Text style={metaRowStyles.label}>{label}</Text>
+    <Text style={metaRowStyles.value}>{value}</Text>
   </View>
 );
+const metaRowStyles = StyleSheet.create({
+  row:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  label: { ...typo.caption, color: colors.text.quaternary },
+  value: { ...typo.caption, color: colors.text.secondary },
+});
 
-const defaultInput = (tab: Tab): string => {
-  if (tab === 'credential') return 'cred-001';
-  if (tab === 'product')    return 'prod-001';
-  return 'did:sov:IIT-Bombay-0xA1B2C3';
-};
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: colors.bg.base, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
-  scroll: { paddingHorizontal: spacing.xs },
-  header: { marginBottom: spacing.xl },
-  title:  { ...typography.title2, color: colors.text.primary },
-  sub:    { ...typography.bodySmall, color: colors.text.tertiary, marginTop: 3 },
+  root: {
+    flex:            1,
+    backgroundColor: colors.bg.base,
+    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+  },
+  scroll: { paddingHorizontal: 16 },
+
+  // Header
+  header: { marginBottom: 16 },
+  title:  { ...typo.title2, color: colors.text.primary },
+  sub:    { ...typo.body,   color: colors.text.tertiary, marginTop: 3 },
+
+  // Tabs
   tabs: {
-    flexDirection: 'row', backgroundColor: colors.glass.medium,
-    borderRadius: radius['2xl'], padding: 3, marginBottom: spacing.xl,
+    flexDirection:   'row',
+    backgroundColor: colors.glass.medium,
+    borderRadius:    radius['2xl'],
+    padding:         3,
+    marginBottom:    16,
+    gap:             3,
   },
   tab: {
-    flex: 1, paddingVertical: spacing.xxs, borderRadius: radius.xl, alignItems: 'center',
+    flex:           1,
+    paddingVertical: 8,
+    borderRadius:   radius.xl,
+    alignItems:     'center',
+    flexDirection:  'row',
+    justifyContent: 'center',
+    gap:            5,
   },
-  tabActive:      { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.light },
-  tabLabel:       { ...typography.buttonSmall, color: colors.text.tertiary },
-  tabLabelActive: { color: colors.text.primary },
-  inputCard:   { marginBottom: spacing.xl },
-  inputLabel:  { ...typography.label, color: colors.text.quaternary, marginBottom: spacing.xxs },
-  input: {
-    ...typography.body,
-    color:           colors.text.primary,
-    backgroundColor: colors.glass.subtle,
-    borderRadius:    radius.xl,
+  tabActive: {
+    backgroundColor: colors.bg.elevated,
     borderWidth:     1,
-    borderColor:     colors.border.subtle,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xxs + 2,
-    marginBottom:    spacing.sm,
+    borderColor:     colors.border.light,
   },
-  verifyBtn:   {},
-  resultCard:  { marginBottom: spacing.sm },
-  resultTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xxs },
-  resultDuration: { ...typography.caption, color: colors.text.quaternary },
-  resultSummary:  { ...typography.body, color: colors.text.secondary },
-  checksWrap: { marginTop: spacing.xxs },
-  divider:    { height: 1, backgroundColor: colors.border.subtle, marginBottom: spacing.xxs },
-  sectionLabel: { ...typography.label, color: colors.text.quaternary, marginBottom: spacing.xxs },
-  checkRow:   { flexDirection: 'row', gap: spacing.xxs, marginBottom: 6, alignItems: 'flex-start' },
-  checkIcon:  { ...typography.body, fontWeight: '700', width: 16, flexShrink: 0 },
-  checkLabel: { ...typography.bodySmall, color: colors.text.secondary },
-  checkDetail:{ ...typography.caption, color: colors.text.quaternary, marginTop: 1 },
-  tapHint:    { ...typography.caption, color: colors.text.quaternary, marginTop: spacing.sm, textAlign: 'right' },
+  tabEmoji:      { fontSize: 14 },
+  tabLabel:      { ...typo.button, color: colors.text.tertiary, fontSize: 12 },
+  tabLabelActive:{ color: colors.text.primary },
+
+  // Input
+  inputCard:  { marginBottom: 16 },
+  inputLabel: { ...typo.label, color: colors.text.quaternary, marginBottom: 8 },
+  input: {
+    ...typo.body,
+    color:             colors.text.primary,
+    backgroundColor:   colors.glass.subtle,
+    borderRadius:      radius.xl,
+    borderWidth:       1,
+    borderColor:       colors.border.subtle,
+    paddingHorizontal: 12,
+    paddingVertical:   10,
+    marginBottom:      12,
+  },
+
+  // Loading
+  loadingCard: { marginBottom: 16 },
+  stepRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 },
+  stepDot: {
+    width: 22, height: 22, borderRadius: radius.full, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  stepIcon:  { fontSize: 10 },
+  stepLabel: { ...typo.body, color: colors.text.tertiary, fontSize: 13 },
+
+  // Error
+  errorCard:  { alignItems: 'center', marginBottom: 16 },
+  errorIcon:  { fontSize: 24, color: colors.trust.suspicious.solid, marginBottom: 8 },
+  errorTitle: { ...typo.title3, color: colors.trust.suspicious.solid, marginBottom: 4 },
+  errorBody:  { ...typo.body, color: colors.text.secondary, textAlign: 'center' },
+
+  // Result
+  resultCard: { marginBottom: 16 },
+  resultTop: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'center',
+    marginBottom:   10,
+  },
+  durationText: { ...typo.caption, color: colors.text.quaternary },
+  summary:      { ...typo.body, color: colors.text.secondary, marginBottom: 4, lineHeight: 20 },
+
+  // Checks
+  checksWrap: { marginTop: 8 },
+  divider:    { height: 1, backgroundColor: colors.border.subtle, marginBottom: 10 },
+  sectionLabel: { ...typo.label, color: colors.text.quaternary, marginBottom: 10 },
+  checkRow: { flexDirection: 'row', gap: 10, marginBottom: 8, alignItems: 'flex-start' },
+  checkDot: {
+    width: 22, height: 22, borderRadius: radius.full, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
+  },
+  checkIcon:   { fontSize: 10, fontWeight: '700' },
+  checkBody:   { flex: 1 },
+  checkLabel:  { ...typo.body, color: colors.text.secondary, fontSize: 13 },
+  checkDetail: { ...typo.caption, color: colors.text.quaternary, marginTop: 1 },
+  tapHint:     { ...typo.caption, color: colors.text.quaternary, marginTop: 12, textAlign: 'right' },
 });
 
 export default VerifyScreen;

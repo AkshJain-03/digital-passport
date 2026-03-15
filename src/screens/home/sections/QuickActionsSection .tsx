@@ -82,15 +82,15 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: spacing.base,
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    paddingHorizontal: spacing[4],
+    gap: spacing[2],
+    marginBottom: spacing[5],
   },
   tile: {
     width: '47.5%',
     borderRadius: radius['2xl'],
     borderWidth: 1,
-    padding: spacing.base,
+    padding: spacing[4],
     minHeight: 96,
     justifyContent: 'space-between',
   },
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.headline,
-    marginTop: spacing.sm,
+    marginTop: spacing[2],
   },
   sub: {
     ...typography.caption,

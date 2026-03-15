@@ -31,7 +31,7 @@ const MIGRATIONS: Migration[] = [
 
 // ─── Runner ───────────────────────────────────────────────────────────────────
 
-export const runMigrations = async (db: any): Promise<void> => {
+export const runMigrations = async (db: SQLiteDatabase): Promise<void> => {
   // Ensure the migrations tracking table exists
   await db.executeSql(`
     CREATE TABLE IF NOT EXISTS _migrations (
@@ -51,7 +51,7 @@ export const runMigrations = async (db: any): Promise<void> => {
   const pending = MIGRATIONS.filter(m => m.version > currentVersion);
 
   for (const migration of pending) {
-    await db.transaction(async (tx: any) => {
+    await db.transaction(async tx => {
       for (const statement of migration.sql) {
         await tx.executeSql(statement);
       }

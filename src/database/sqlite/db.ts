@@ -10,6 +10,8 @@
 import SQLite from 'react-native-sqlite-storage';
 import { ALL_MIGRATIONS } from './schema';
 
+type SQLiteDatabase = any;
+
 SQLite.enablePromise(true);
 
 const DB_NAME    = 'sovereign_trust.db';
@@ -17,10 +19,9 @@ const DB_VERSION = '1.0';
 const DB_DISPLAY = 'Sovereign Trust';
 const DB_SIZE    = 200000;
 
+let _db: SQLiteDatabase | null = null;
 
-let _db: any | null = null;
-
-export const getDb = async (): Promise<any> => {
+export const getDb = async (): Promise<SQLiteDatabase> => {
   if (_db) return _db;
 
   _db = await SQLite.openDatabase(DB_NAME, DB_VERSION, DB_DISPLAY, DB_SIZE);
@@ -28,7 +29,7 @@ export const getDb = async (): Promise<any> => {
   return _db;
 };
 
-const runMigrations = async (db: any): Promise<void> => {
+const runMigrations = async (db: SQLiteDatabase): Promise<void> => {
   for (const sql of ALL_MIGRATIONS) {
     await db.executeSql(sql);
   }

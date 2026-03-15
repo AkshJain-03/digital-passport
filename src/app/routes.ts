@@ -19,6 +19,7 @@ export const ROUTES = {
   CREDENTIAL_DETAIL:   'CredentialDetail',
   PRODUCT_DETAIL:      'ProductDetail',
   SETTINGS:            'Settings',
+  TRUST_ENGINE:        'TrustEngine',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
@@ -41,4 +42,5 @@ export type RootStackParamList = {
   [ROUTES.CREDENTIAL_DETAIL]:  { credentialId: string };
   [ROUTES.PRODUCT_DETAIL]:     { productId: string };
   [ROUTES.SETTINGS]:           undefined;
+  [ROUTES.TRUST_ENGINE]:       undefined;
 };

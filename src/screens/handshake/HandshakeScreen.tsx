@@ -1,12 +1,14 @@
 /**
  * HandshakeScreen
  *
- * Passwordless login flow:
- *   1. Parse challenge QR (or receive rawQR via navigation params)
- *   2. Show challenge details (verifier name, scope, expiry)
- *   3. User taps "Authenticate with Face ID / Touch ID"
- *   4. Biometric prompt fires (EXPLICIT user gesture)
- *   5. Sign nonce and show success / error result
+ * Passwordless DID-auth login flow:
+ *   1. Parse challenge QR (auto-loaded in dev via DEMO_QR)
+ *   2. Show verifier name, scope chips, nonce preview, expiry
+ *   3. User taps "Authenticate" → biometric prompt (explicit gesture)
+ *   4. Sign nonce with hardware key → show result
+ *
+ * SECURITY: biometric is ONLY triggered by explicit button press.
+ * This hook never auto-fires.
  */
 
 import React, { useEffect } from 'react';
@@ -20,18 +22,27 @@ import {
   View,
 } from 'react-native';
 
-import { colors }            from '../../theme/colors';
-import { radius }            from '../../theme/radius';
-import { spacing }           from '../../theme/spacing';
-import { typography }        from '../../theme/typography';
-import { shadows }           from '../../theme/shadows';
-import { GlassCard }         from '../../components/common/GlassCard';
-import { AppButton }         from '../../components/common/AppButton';
-import { AppBadge }          from '../../components/common/AppBadge';
-import { LoadingState }      from '../../components/common/LoadingState';
-import { useHandshakeFlow }  from '../../hooks/useHandshakeFlow';
+import { colors }           from '../../theme/colors';
+import { radius }           from '../../theme/radius';
+import { GlassCard }        from '../../components/common/GlassCard';
+import { AppButton }        from '../../components/common/AppButton';
+import { AppBadge }         from '../../components/common/AppBadge';
+import { LoadingState }     from '../../components/common/LoadingState';
+import { useHandshakeFlow } from '../../hooks/useHandshakeFlow';
 
-// Demo challenge QR for testing the flow
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const t = (require('../../theme/typography').typography) as Record<string, any>;
+const typo = {
+  title2:   t.title2    ?? {},
+  title3:   t.title3    ?? {},
+  headline: t.headlineSm ?? t.headline ?? {},
+  body:     t.bodySm    ?? t.body      ?? {},
+  caption:  t.captionSm ?? t.caption   ?? {},
+  label:    t.label     ?? {},
+  mono:     t.mono      ?? {},
+};
+
+// Demo challenge for dev preview
 const DEMO_QR = JSON.stringify({
   nonce:        'abc123def456ghi789jkl012',
   issuedAt:     new Date().toISOString(),
@@ -44,117 +55,125 @@ const DEMO_QR = JSON.stringify({
 export const HandshakeScreen: React.FC = () => {
   const { step, handshake, error, parseChallenge, sign, reset } = useHandshakeFlow();
 
-  // Auto-parse demo QR on mount for preview
+  // Auto-parse demo QR on mount for preview (dev only)
   useEffect(() => {
     if (step === 'idle') parseChallenge(DEMO_QR);
-  }, []);    // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const glowState =
+    step === 'completed' ? 'verified' :
+    step === 'error'     ? 'revoked'  :
+    'trusted';
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Header ────────────────────────────────────────────────────── */}
         <View style={styles.header}>
           <Text style={styles.title}>Login Request</Text>
           <Text style={styles.sub}>A verifier is requesting access to your credentials</Text>
         </View>
 
-        {/* Challenge card */}
+        {/* ── Challenge card ────────────────────────────────────────────── */}
         {handshake && (
           <GlassCard
-            glowState={
-              step === 'completed' ? 'verified'
-                : step === 'error' ? 'revoked'
-                : 'trusted'
-            }
+            glowState={glowState}
+            animateGlow
+            padding="md"
             style={styles.challengeCard}
           >
-            {/* Verifier row */}
+            {/* Verifier identity */}
             <View style={styles.verifierRow}>
               <View style={styles.verifierIcon}>
                 <Text style={styles.verifierEmoji}>🏢</Text>
               </View>
               <View style={styles.verifierBody}>
-                <Text style={styles.verifierName}>
-                  {handshake.challenge.verifierName ?? 'Unknown Verifier'}
-                </Text>
+                <Text style={styles.verifierName}>{handshake.challenge.verifierName}</Text>
                 <Text style={styles.verifierDid} numberOfLines={1}>
                   {handshake.challenge.verifierDid}
                 </Text>
               </View>
-              <AppBadge
-                label={step === 'completed' ? 'Signed' : step === 'error' ? 'Failed' : 'Pending'}
-                variant={step === 'completed' ? 'verified' : step === 'error' ? 'revoked' : 'pending'}
-                dot
-              />
+              <AppBadge label="Login Request" variant="trusted" size="sm" />
             </View>
 
-            {/* Scope */}
-            <View style={styles.scopeSection}>
-              <Text style={styles.sectionLabel}>REQUESTED CLAIMS</Text>
-              <View style={styles.scopeChips}>
-                {handshake.challenge.scope.map(s => (
-                  <View key={s} style={styles.scopeChip}>
-                    <Text style={styles.scopeChipText}>{s}</Text>
-                  </View>
-                ))}
+            {/* Requested scope */}
+            {handshake.challenge.scope.length > 0 && (
+              <View style={styles.scopeSection}>
+                <Text style={styles.sectionLabel}>REQUESTED ACCESS</Text>
+                <View style={styles.scopeChips}>
+                  {handshake.challenge.scope.map(s => (
+                    <View key={s} style={styles.scopeChip}>
+                      <Text style={styles.scopeChipText}>{s}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
 
-            {/* Expiry */}
-            <View style={styles.expiryRow}>
-              <Text style={styles.expiryLabel}>Expires</Text>
-              <Text style={styles.expiryValue}>
-                {new Date(handshake.challenge.expiresAt).toLocaleTimeString()}
-              </Text>
-            </View>
-
-            {/* Nonce preview */}
-            <View style={styles.nonceRow}>
-              <Text style={styles.expiryLabel}>Nonce</Text>
-              <Text style={styles.nonce}>
-                {handshake.challenge.nonce.slice(0, 12)}…
-              </Text>
+            {/* Expiry + nonce */}
+            <View style={styles.metaGrid}>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Expires</Text>
+                <Text style={styles.metaValue}>
+                  {new Date(handshake.challenge.expiresAt).toLocaleTimeString()}
+                </Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Nonce</Text>
+                <Text style={styles.metaNonce}>
+                  {handshake.challenge.nonce.slice(0, 14)}…
+                </Text>
+              </View>
             </View>
           </GlassCard>
         )}
 
-        {/* Signing state */}
+        {/* ── Signing / loading ─────────────────────────────────────────── */}
         {(step === 'signing' || step === 'awaiting_biometric') && (
-          <LoadingState message={
-            step === 'awaiting_biometric' ? 'Waiting for biometrics…' : 'Signing with hardware key…'
-          } />
+          <LoadingState
+            message={
+              step === 'awaiting_biometric'
+                ? 'Waiting for biometric…'
+                : 'Signing with hardware key…'
+            }
+          />
         )}
 
-        {/* Success */}
+        {/* ── Success ───────────────────────────────────────────────────── */}
         {step === 'completed' && (
-          <GlassCard glowState="verified" style={styles.resultCard}>
-            <Text style={styles.resultIcon}>✓</Text>
+          <GlassCard glowState="verified" padding="md" style={styles.resultCard}>
+            <Text style={styles.resultIconText}>✓</Text>
             <Text style={styles.resultTitle}>Authentication Complete</Text>
             <Text style={styles.resultDetail}>
               Challenge signed with your hardware key and sent to {handshake?.challenge.verifierName}.
             </Text>
-            <Text style={styles.resultMono}>
-              Signature: {handshake?.response?.signature?.slice(0, 20)}…
-            </Text>
+            {handshake?.response?.signature && (
+              <Text style={styles.resultMono}>
+                Sig: {handshake.response.signature.slice(0, 22)}…
+              </Text>
+            )}
           </GlassCard>
         )}
 
-        {/* Error */}
+        {/* ── Error ─────────────────────────────────────────────────────── */}
         {(step === 'error' || error) && (
-          <GlassCard glowState="revoked" style={styles.resultCard}>
-            <Text style={[styles.resultIcon, { color: colors.trust.revoked.solid }]}>✕</Text>
+          <GlassCard glowState="revoked" padding="md" style={styles.resultCard}>
+            <Text style={[styles.resultIconText, { color: colors.trust.revoked.solid }]}>✕</Text>
             <Text style={[styles.resultTitle, { color: colors.trust.revoked.solid }]}>
               Authentication Failed
             </Text>
-            <Text style={styles.resultDetail}>{error}</Text>
+            <Text style={styles.resultDetail}>{error ?? 'Unknown error'}</Text>
           </GlassCard>
         )}
 
-        {/* Action — MUST be an explicit user button press */}
+        {/* ── CTA — MUST be explicit user tap ───────────────────────────── */}
         <View style={styles.actions}>
-          {(step === 'challenge_parsed') && (
+          {step === 'challenge_parsed' && (
             <AppButton
               label="Authenticate with Biometrics"
               onPress={sign}
@@ -173,48 +192,74 @@ export const HandshakeScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: colors.bg.base, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
-  scroll: { paddingHorizontal: spacing.xs },
-  header: { marginBottom: spacing.xl },
-  title:  { ...typography.title2, color: colors.text.primary },
-  sub:    { ...typography.bodySmall, color: colors.text.tertiary, marginTop: 3 },
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
-  challengeCard: { marginBottom: spacing.xl },
-  verifierRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xl },
+const styles = StyleSheet.create({
+  root: {
+    flex:            1,
+    backgroundColor: colors.bg.base,
+    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+  },
+  scroll: { paddingHorizontal: 16 },
+
+  header: { marginBottom: 20 },
+  title:  { ...typo.title2, color: colors.text.primary },
+  sub:    { ...typo.body,   color: colors.text.tertiary, marginTop: 3 },
+
+  // Challenge card
+  challengeCard: { marginBottom: 16 },
+
+  // Verifier row
+  verifierRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   verifierIcon: {
-    width: 44, height: 44, borderRadius: radius.xl,
-    backgroundColor: colors.glass.medium, borderWidth: 1, borderColor: colors.border.light,
-    alignItems: 'center', justifyContent: 'center',
+    width:           44,
+    height:          44,
+    borderRadius:    radius.xl,
+    backgroundColor: colors.glass.medium,
+    borderWidth:     1,
+    borderColor:     colors.border.light,
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
   },
   verifierEmoji: { fontSize: 22 },
   verifierBody:  { flex: 1 },
-  verifierName:  { ...typography.headline, color: colors.text.primary },
-  verifierDid:   { ...typography.mono, fontSize: 9, color: colors.text.quaternary, marginTop: 2 },
+  verifierName:  { ...typo.headline, color: colors.text.primary },
+  verifierDid:   { ...typo.mono, fontSize: 9, color: colors.text.quaternary, marginTop: 2 },
 
-  scopeSection:  { marginBottom: spacing.sm },
-  sectionLabel:  { ...typography.label, color: colors.text.quaternary, marginBottom: spacing.xxs },
-  scopeChips:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xxs },
+  // Scope
+  scopeSection: { marginBottom: 12 },
+  sectionLabel: { ...typo.label, color: colors.text.quaternary, marginBottom: 8 },
+  scopeChips:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   scopeChip: {
-    paddingHorizontal: spacing.xxs, paddingVertical: 3,
-    backgroundColor: colors.brand.primaryDim, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.brand.primary + '40',
+    paddingHorizontal: 10,
+    paddingVertical:   4,
+    backgroundColor:   colors.brand.primaryDim,
+    borderRadius:      radius.full,
+    borderWidth:       1,
+    borderColor:       `${colors.brand.primary}40`,
   },
-  scopeChipText: { ...typography.caption, color: colors.brand.primary },
+  scopeChipText: { ...typo.caption, color: colors.brand.primary, fontWeight: '600' },
 
-  expiryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xxs },
-  nonceRow:  { flexDirection: 'row', justifyContent: 'space-between' },
-  expiryLabel: { ...typography.caption, color: colors.text.quaternary },
-  expiryValue: { ...typography.caption, color: colors.text.secondary },
-  nonce:       { ...typography.mono, fontSize: 10, color: colors.text.tertiary },
+  // Meta
+  metaGrid: { gap: 6 },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  metaLabel: { ...typo.caption, color: colors.text.quaternary },
+  metaValue: { ...typo.caption, color: colors.text.secondary },
+  metaNonce: { ...typo.mono, fontSize: 10, color: colors.text.tertiary },
 
-  resultCard: { marginBottom: spacing.xl, alignItems: 'center', paddingVertical: spacing['5xl'] },
-  resultIcon:  { fontSize: 36, marginBottom: spacing.xxs, color: colors.trust.verified.solid },
-  resultTitle: { ...typography.title3, color: colors.text.primary, textAlign: 'center', marginBottom: spacing.xxs },
-  resultDetail:{ ...typography.bodySmall, color: colors.text.tertiary, textAlign: 'center' },
-  resultMono:  { ...typography.mono, fontSize: 10, color: colors.text.quaternary, marginTop: spacing.xxs },
+  // Result
+  resultCard:   { marginBottom: 16, alignItems: 'center', paddingVertical: 24 },
+  resultIconText: {
+    fontSize:     36,
+    color:        colors.trust.verified.solid,
+    marginBottom: 8,
+  },
+  resultTitle:  { ...typo.title3, color: colors.text.primary, textAlign: 'center', marginBottom: 8 },
+  resultDetail: { ...typo.body, color: colors.text.tertiary, textAlign: 'center' },
+  resultMono:   { ...typo.mono, fontSize: 10, color: colors.text.quaternary, marginTop: 8 },
 
-  actions: { gap: spacing.sm },
+  actions: { gap: 12 },
 });
 
 export default HandshakeScreen;

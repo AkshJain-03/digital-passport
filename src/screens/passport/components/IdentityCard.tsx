@@ -1,15 +1,16 @@
 /**
  * IdentityCard
  *
- * The hero component of the Passport screen.
- * Visually inspired by a physical identity card / Apple Cash card —
- * rendered as a full-width glass panel with:
+ * Hero component for the Passport screen — a full-width glass panel
+ * styled like a physical identity card:
  *
- *   • Animated mesh gradient background (cyan → violet sweep)
- *   • User DID (truncated, monospace)
- *   • Hardware key fingerprint with lock icon
+ *   • Animated cyan + violet orb mesh gradient
+ *   • Sweeping holographic shimmer
+ *   • DID (monospace, truncated)
+ *   • Hardware key fingerprint + lock icon
  *   • Identity status badge
- *   • Subtle holographic shimmer overlay
+ *   • Live trust score
+ *   • Bottom neon accent stripe
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -20,78 +21,98 @@ import {
   View,
 } from 'react-native';
 
-import { colors }       from '../../../theme/colors';
-import { radius }       from '../../../theme/radius';
-import { shadows }      from '../../../theme/shadows';
-import { spacing }      from '../../../theme/spacing';
-import { typography }   from '../../../theme/typography';
-import { AppBadge }     from '../../../components/common/AppBadge';
+import { colors }   from '../../../theme/colors';
+import { radius }   from '../../../theme/radius';
+import { AppBadge } from '../../../components/common/AppBadge';
 import type { Identity } from '../../../models/identity';
 import { IDENTITY_STATUS_META } from '../../../models/identity';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const t = (require('../../../theme/typography').typography) as Record<string, any>;
+const typo = {
+  label:    t.label    ?? {},
+  caption:  t.captionSm ?? t.caption ?? {},
+  title1:   t.title1   ?? {},
+  headline: t.headlineSm ?? t.headline ?? {},
+  mono:     t.mono     ?? {},
+  display:  t.display  ?? {},
+};
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface IdentityCardProps {
   identity: Identity;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export const IdentityCard: React.FC<IdentityCardProps> = ({ identity }) => {
   const shimmerAnim = useRef(new Animated.Value(-1)).current;
-  const glowAnim    = useRef(new Animated.Value(0.6)).current;
+  const glowAnim    = useRef(new Animated.Value(0.55)).current;
   const entryAnim   = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Entry
+    // Entry spring
     Animated.spring(entryAnim, {
       toValue: 1, useNativeDriver: true, speed: 10, bounciness: 5,
     }).start();
 
-    // Shimmer sweep
+    // Shimmer sweep — cycles every ~5.5 s
     Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmerAnim, { toValue: 2, duration: 3000, useNativeDriver: true }),
-        Animated.delay(2500),
+        Animated.timing(shimmerAnim, { toValue: 2, duration: 2800, useNativeDriver: true }),
+        Animated.delay(2700),
         Animated.timing(shimmerAnim, { toValue: -1, duration: 0, useNativeDriver: true }),
       ]),
     ).start();
 
-    // Glow pulse
+    // Orb glow breathe
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1.0, duration: 2200, useNativeDriver: true }),
-        Animated.timing(glowAnim, { toValue: 0.5, duration: 2200, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 1.0, duration: 2400, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.45, duration: 2400, useNativeDriver: true }),
       ]),
     ).start();
   }, [shimmerAnim, glowAnim, entryAnim]);
 
   const shimmerX = shimmerAnim.interpolate({
-    inputRange: [-1, 2], outputRange: ['-100%' as any, '300%' as any],
+    inputRange:  [-1, 2],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    outputRange: ['-100%' as any, '300%' as any],
   });
 
-  const statusMeta = IDENTITY_STATUS_META[identity.status];
-  const trustVariant = identity.status === 'active' ? 'verified' : 'suspicious';
+  const statusMeta    = IDENTITY_STATUS_META[identity.status];
+  const trustVariant  = identity.status === 'active' ? 'verified' : 'suspicious';
+  const scoreColor    = identity.trustScore >= 80
+    ? colors.trust.verified.solid
+    : identity.trustScore >= 50
+    ? colors.trust.suspicious.solid
+    : colors.trust.revoked.solid;
 
-  // Truncated DID for display
-  const displayDid = identity.did.length > 30
-    ? identity.did.slice(0, 16) + '…' + identity.did.slice(-8)
+  // Shortened DID for card display
+  const displayDid = identity.did.length > 32
+    ? `${identity.did.slice(0, 16)}…${identity.did.slice(-8)}`
     : identity.did;
 
   return (
     <Animated.View
       style={[
         styles.card,
-        shadows.glowTrusted,
         {
-          opacity: entryAnim,
+          opacity:   entryAnim,
           transform: [
-            { scale: entryAnim.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
+            {
+              scale: entryAnim.interpolate({
+                inputRange: [0, 1], outputRange: [0.94, 1],
+              }),
+            },
           ],
         },
       ]}
     >
-      {/* ── Background gradient mesh ─────────────────────────────────────── */}
-      <View style={styles.meshBg}>
-        {/* Cyan orb top-right */}
-        <Animated.View style={[styles.orb, styles.orbCyan, { opacity: glowAnim }]} />
-        {/* Violet orb bottom-left */}
+      {/* ── Background mesh orbs ─────────────────────────────────────────── */}
+      <View style={StyleSheet.absoluteFill}>
+        <Animated.View style={[styles.orb, styles.orbCyan,   { opacity: glowAnim }]} />
         <Animated.View style={[styles.orb, styles.orbViolet, { opacity: glowAnim }]} />
       </View>
 
@@ -103,7 +124,8 @@ export const IdentityCard: React.FC<IdentityCardProps> = ({ identity }) => {
 
       {/* ── Card content ─────────────────────────────────────────────────── */}
       <View style={styles.content}>
-        {/* Top row: app name + status */}
+
+        {/* Top row: app brand + status badge */}
         <View style={styles.topRow}>
           <View>
             <Text style={styles.appLabel}>SOVEREIGN TRUST</Text>
@@ -117,19 +139,18 @@ export const IdentityCard: React.FC<IdentityCardProps> = ({ identity }) => {
           />
         </View>
 
-        {/* Alias */}
+        {/* Alias / display name */}
         <Text style={styles.alias}>{identity.alias}</Text>
 
-        {/* DID */}
+        {/* DID row */}
         <View style={styles.didRow}>
           <Text style={styles.didLabel}>DID</Text>
           <Text style={styles.didValue} numberOfLines={1}>{displayDid}</Text>
         </View>
 
-        {/* Divider */}
         <View style={styles.divider} />
 
-        {/* Bottom row: fingerprint + key info */}
+        {/* Bottom row: hardware key left, trust score right */}
         <View style={styles.bottomRow}>
           <View style={styles.keySection}>
             <Text style={styles.sectionLabel}>HARDWARE KEY</Text>
@@ -141,69 +162,82 @@ export const IdentityCard: React.FC<IdentityCardProps> = ({ identity }) => {
                 {identity.hardwareKey.fingerprint}
               </Text>
             </View>
-            <Text style={styles.keyAlgorithm}>
+            <Text style={styles.keyAlgo}>
               {identity.hardwareKey.algorithm} · {identity.hardwareKey.attestationType}
             </Text>
           </View>
 
           <View style={styles.scoreSection}>
             <Text style={styles.sectionLabel}>TRUST SCORE</Text>
-            <Text style={styles.scoreValue}>{identity.trustScore}</Text>
+            <Text style={[styles.scoreValue, { color: scoreColor }]}>
+              {identity.trustScore}
+            </Text>
             <Text style={styles.scoreOutOf}>/100</Text>
           </View>
         </View>
       </View>
 
-      {/* ── Bottom card edge stripe ──────────────────────────────────────── */}
+      {/* ── Bottom accent stripe ─────────────────────────────────────────── */}
       <View style={styles.bottomStripe} />
     </Animated.View>
   );
 };
 
-const CARD_HEIGHT = 220;
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const CARD_HEIGHT = 222;
 
 const styles = StyleSheet.create({
   card: {
-    height:          CARD_HEIGHT,
-    borderRadius:    radius['4xl'],
-    borderWidth:     1,
-    borderColor:     colors.trust.trusted.solid,
-    backgroundColor: colors.bg.elevated,
-    overflow:        'hidden',
-    position:        'relative',
-    marginHorizontal: spacing.xs,
+    height:           CARD_HEIGHT,
+    borderRadius:     radius['4xl'],
+    borderWidth:      1,
+    borderColor:      colors.trust.trusted.solid,
+    backgroundColor:  colors.bg.elevated,
+    overflow:         'hidden',
+    position:         'relative',
+    marginHorizontal: 16,
+    // iOS glow
+    shadowColor:      colors.brand.primary,
+    shadowOffset:     { width: 0, height: 0 },
+    shadowOpacity:    0.35,
+    shadowRadius:     24,
+    elevation:        12,
   },
-  meshBg: {
-    ...StyleSheet.absoluteFillObject,
-  },
+
+  // Orbs
   orb: {
     position:     'absolute',
     width:        200,
     height:       200,
     borderRadius: 100,
-    opacity:      0.15,
+    opacity:      0.14,
   },
   orbCyan: {
-    top:    -60,
-    right:  -40,
+    top:             -60,
+    right:           -40,
     backgroundColor: colors.brand.primary,
   },
   orbViolet: {
-    bottom: -80,
-    left:   -40,
+    bottom:          -80,
+    left:            -40,
     backgroundColor: colors.brand.secondary,
   },
+
+  // Shimmer
   shimmer: {
     position:        'absolute',
     top:             0,
     bottom:          0,
-    width:           '40%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    width:           '38%',
+    backgroundColor: 'rgba(255,255,255,0.035)',
     transform:       [{ skewX: '-20deg' }],
   },
+
+  // Content
   content: {
-    flex:    1,
-    padding: spacing.md,
+    flex:           1,
+    padding:        20,
     justifyContent: 'space-between',
   },
   topRow: {
@@ -212,51 +246,54 @@ const styles = StyleSheet.create({
     alignItems:     'flex-start',
   },
   appLabel: {
-    ...typography.label,
+    ...typo.label,
     color:    colors.brand.primary,
     fontSize: 9,
   },
   cardType: {
-    ...typography.caption,
+    ...typo.caption,
     color:     colors.text.tertiary,
     marginTop: 1,
   },
   alias: {
-    ...typography.title1,
-    color:    colors.text.primary,
-    marginTop: spacing.xxs,
+    ...typo.title1,
+    color:     colors.text.primary,
+    marginTop: 8,
   },
+
+  // DID
   didRow: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           8,
-    marginTop:     spacing.xxs,
+    marginTop:     4,
   },
   didLabel: {
-    ...typography.label,
+    ...typo.label,
     color:    colors.text.quaternary,
     fontSize: 8,
   },
   didValue: {
-    ...typography.mono,
+    ...typo.mono,
     color: colors.text.tertiary,
     flex:  1,
   },
+
   divider: {
     height:          1,
     backgroundColor: colors.border.subtle,
-    marginVertical:  spacing.xxs,
+    marginVertical:  8,
   },
+
+  // Bottom row
   bottomRow: {
     flexDirection:  'row',
     justifyContent: 'space-between',
     alignItems:     'flex-end',
   },
-  keySection: {
-    flex: 1,
-  },
+  keySection: { flex: 1 },
   sectionLabel: {
-    ...typography.label,
+    ...typo.label,
     color:        colors.text.quaternary,
     fontSize:     8,
     marginBottom: 3,
@@ -266,35 +303,38 @@ const styles = StyleSheet.create({
     alignItems:    'center',
     gap:           5,
   },
-  lockIcon: {
-    fontSize: 13,
-  },
+  lockIcon:    { fontSize: 13 },
   fingerprint: {
-    ...typography.mono,
+    ...typo.mono,
     color:    colors.brand.primary,
     fontSize: 12,
   },
-  keyAlgorithm: {
-    ...typography.caption,
+  keyAlgo: {
+    ...typo.caption,
     color:     colors.text.quaternary,
     marginTop: 2,
+    fontSize:  10,
   },
-  scoreSection: {
-    alignItems: 'flex-end',
-  },
+
+  // Score
+  scoreSection: { alignItems: 'flex-end' },
   scoreValue: {
-    ...typography.display,
-    color:      colors.trust.verified.solid,
+    ...typo.display,
     lineHeight: 48,
+    fontWeight: '800',
   },
   scoreOutOf: {
-    ...typography.caption,
+    ...typo.caption,
     color:     colors.text.tertiary,
     marginTop: -4,
   },
+
+  // Stripe
   bottomStripe: {
     height:          3,
     backgroundColor: colors.trust.trusted.solid,
-    opacity:         0.6,
+    opacity:         0.55,
   },
 });
+
+export default IdentityCard;

@@ -1,26 +1,25 @@
 /**
  * Verification Router
  *
- * Inspects a raw QR scan payload or an explicit VerificationRequest
- * and dispatches it to the correct verificationEngine handler.
- *
- * This is the single entry point for the Scan screen and Verify screen.
+ * Single entry point for all scan and manual verification flows.
+ * Parses a raw QR payload → routes to the correct engine handler.
  */
 
-import { qrParserService }         from '../../services/qr/qrParserService';
-import { verificationEngine }      from './verificationEngine';
+import { qrParserService }        from '../../services/qr/qrParserService';
+import { verificationEngine }     from './verificationEngine';
 import type {
   VerificationRequest,
   VerificationResult,
   VerificationSubjectType,
-}                                  from './verificationTypes';
+}                                 from './verificationTypes';
+import 'react-native-get-random-values';
+import { v4 as uuid }             from 'uuid';
+
+// ─── Router ───────────────────────────────────────────────────────────────────
 
 export const verificationRouter = {
 
-  /**
-   * Route a raw QR string to the appropriate verification handler.
-   * Returns a VerificationResult regardless of subject type.
-   */
+  /** Route a raw QR string to the appropriate verification handler. */
   async routeQR(rawQR: string): Promise<VerificationResult> {
     const parsed = qrParserService.parse(rawQR);
 
@@ -29,36 +28,57 @@ export const verificationRouter = {
         return verificationEngine.verify(
           'credential',
           parsed.payload?.id ?? rawQR,
+          rawQR,
         );
 
       case 'product':
         return verificationEngine.verify(
           'product',
           parsed.payload?.id ?? rawQR,
+          rawQR,
         );
 
-      case 'handshake':
-        // Handshake QRs are handled separately by useHandshakeFlow
-        return buildUnsupportedResult(rawQR, 'document');
+      case 'document':
+        return verificationEngine.verify(
+          'document',
+          parsed.payload?.id ?? rawQR,
+          rawQR,
+        );
+
+      case 'login':
+        return verificationEngine.verify(
+          'login',
+          parsed.payload?.id ?? rawQR,
+          rawQR,
+        );
+
+      case 'did':
+        return verificationEngine.verify(
+          'did',
+          parsed.payload?.did ?? rawQR,
+          rawQR,
+        );
 
       default:
-        return buildUnsupportedResult(rawQR, 'document');
+        // Unknown QR: try resolving as raw DID string
+        if (/^did:[a-z]+:/.test(rawQR.trim())) {
+          return verificationEngine.verify('did', rawQR.trim());
+        }
+        return buildUnsupportedResult(rawQR, 'credential');
     }
   },
 
-  /**
-   * Route an explicit VerificationRequest.
-   * Used by the Verify screen's manual input tab.
-   */
+  /** Route an explicit VerificationRequest (Verify screen manual input). */
   async route(request: VerificationRequest): Promise<VerificationResult> {
-    return verificationEngine.verify(request.subjectType, request.subjectId);
+    return verificationEngine.verify(
+      request.subjectType,
+      request.subjectId,
+      request.rawPayload,
+    );
   },
 };
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
-
-import 'react-native-get-random-values';
-import { v4 as uuid } from 'uuid';
+// ─── Fallback ─────────────────────────────────────────────────────────────────
 
 const buildUnsupportedResult = (
   subjectId:   string,
@@ -69,11 +89,12 @@ const buildUnsupportedResult = (
   subjectType,
   trustState:  'unknown',
   checks: [{
-    id:      'unsupported',
-    label:   'Subject type not supported for direct verification',
+    id:      'unrecognised',
+    label:   'QR code format not recognised',
     outcome: 'unknown',
+    detail:  'Try scanning a Sovereign Trust credential, product, or login QR.',
   }],
-  summary:    `Verification for ${subjectType} is handled separately.`,
+  summary:    'Unable to identify QR code type.',
   verifiedAt: new Date().toISOString(),
   durationMs: 0,
 });

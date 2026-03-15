@@ -32,5 +32,5 @@ export const seed = async (): Promise<void> => {
   }
 };
 
-// Backwards-compatible export name used elsewhere in the app
+/** Alias expected by useAppInit and database/index.ts */
 export const seedDatabase = seed;

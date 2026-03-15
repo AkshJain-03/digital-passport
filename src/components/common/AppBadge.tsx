@@ -99,7 +99,7 @@ const SIZE_CONFIG: Record<BadgeSize, { ph: number; pv: number; dotSize: number }
 const SIZE_TYPOGRAPHY: Record<BadgeSize, object> = {
   sm: { ...typography.label,   fontSize: 9  },
   md: { ...typography.label,   fontSize: 10 },
-  lg: { ...typography.label, fontSize: 11 },
+  lg: { ...typography.labelMd, fontSize: 11 },
 };
 
 // ─── Pulsing dot ──────────────────────────────────────────────────────────────

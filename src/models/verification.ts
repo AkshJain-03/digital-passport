@@ -16,7 +16,6 @@ export type {
   VerificationCheck,
   VerificationRequest,
   VerificationSubjectType,
-  VerificationStep,
   VerificationStepStatus,
 }                        from '../domain/verification/verificationTypes';
 

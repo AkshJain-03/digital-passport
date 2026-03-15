@@ -27,6 +27,18 @@ export const ISSUER_DIRECTORY: Issuer[] = [
     isVerified: true, trustState: 'verified', addedAt: '2024-01-01T00:00:00Z',
   },
   {
+    id: 'acm', did: 'did:sov:ACM-0xJ1K2L3',
+    name: 'Association for Computing Machinery', shortName: 'ACM',
+    logoEmoji: '⚙️', category: 'Professional Body', country: 'US',
+    isVerified: true, trustState: 'trusted', addedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'anthropic', did: 'did:sov:Anthropic-0xM4N5O6',
+    name: 'Anthropic Inc.', shortName: 'Anthropic',
+    logoEmoji: '🤖', category: 'Corporate', country: 'US',
+    isVerified: true, trustState: 'verified', addedAt: '2024-01-01T00:00:00Z',
+  },
+  {
     id: 'mit', did: 'did:sov:MIT-0xP1Q2R3',
     name: 'Massachusetts Institute of Technology', shortName: 'MIT',
     logoEmoji: '🔬', category: 'University', country: 'US',

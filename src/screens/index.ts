@@ -11,3 +11,4 @@ export { HandshakeScreen }      from './handshake/HandshakeScreen';
 export { SettingsScreen }       from './settings/SettingsScreen';
 export { CredentialListScreen } from './credentials/CredentialListScreen';
 export { ProductDetailScreen }  from './product/ProductDetailScreen';
+export { TrustEngineScreen }    from './settings/TrustEngineScreen';

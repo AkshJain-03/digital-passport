@@ -1,5 +1,5 @@
 export { CredentialListScreen }     from './CredentialListScreen';
-export { CredentialCard }           from './components/Credentialcard';
+export { CredentialCard }           from './components/CredentialCard';
 export { CredentialFilterBar }      from './components/CredentialFilterBar';
 export { CredentialQRSheet }        from './components/CredentialQRSheet';
 export { CredentialDetailSheet }    from './components/CredentialDetailSheet';

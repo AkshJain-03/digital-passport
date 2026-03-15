@@ -17,6 +17,30 @@ export type {
   VerificationCheck,
   VerificationSubjectType,
   VerificationStepStatus,
-  VerificationStep,
   CheckOutcome,
+  ScanTypeMeta,
 }                              from './verification/verificationTypes';
+
+// ─── Truth domain ─────────────────────────────────────────────────────────────
+export { authorTrustResolver }  from './truth/authorTrustResolver';
+export type {
+  AuthorTrustTier,
+  AuthorTrustProfile,
+  FraudSignal,
+  FraudAnalysis,
+  FraudSeverity,
+  FraudSignalId,
+  ClaimStatus,
+  Claim,
+}                               from './truth/truthTypes';
+export { FRAUD_SIGNAL_META, SEVERITY_COLOR } from './truth/truthTypes';
+
+// ─── Trust Graph domain ───────────────────────────────────────────────────────
+export { trustGraphEngine }     from './trustGraph/trustGraphEngine';
+export { trustScore }           from './trustGraph/trustScore';
+export { makeNode, NODE_TYPE_META } from './trustGraph/trustNode';
+export { makeEdge, EDGE_TYPE_META } from './trustGraph/trustEdge';
+export type { TrustGraph }      from './trustGraph/trustGraphEngine';
+export type { TrustNode, TrustNodeType } from './trustGraph/trustNode';
+export type { TrustEdge, TrustEdgeType } from './trustGraph/trustEdge';
+export type { TrustScoreResult } from './trustGraph/trustScore';

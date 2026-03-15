@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing[4],
   },
   left: {
     flexDirection: 'row',
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     color:    colors.text.quaternary,
   },
   action: {
-    ...typography.caption,
+    ...typography.captionSm,
     color: colors.brand.primary,
   },
 });

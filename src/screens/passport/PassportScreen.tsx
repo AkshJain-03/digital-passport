@@ -1,7 +1,23 @@
-import React, { useState } from 'react';
+/**
+ * PassportScreen
+ *
+ * The identity hub — user's sovereign DID, hardware key,
+ * trust score, credential wallet preview, and security info.
+ *
+ * Layout:
+ *   1. Page header
+ *   2. IdentityCard (hero DID card)
+ *   3. IdentityStats (credential / issuer / verified pills)
+ *   4. TrustScoreRing + status
+ *   5. Recent credentials (mini rows)
+ *   6. Hardware security card
+ */
+
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -9,305 +25,417 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors, type TrustState } from '../../theme/colors';
-import { radius } from '../../theme/radius';
-import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
-import { shadows } from '../../theme/shadows';
-import { GlassCard } from '../../components/common/GlassCard';
-import { AppBadge } from '../../components/common/AppBadge';
-import { AppSectionTitle } from '../../components/common/AppSectionTitle';
 
-interface Credential {
-  id: string;
-  type: string;
-  title: string;
-  issuer: string;
-  issuedAt: string;
-  expiresAt?: string;
-  trustState: TrustState;
-  did: string;
-}
+import { colors }              from '../../theme/colors';
+import { radius }              from '../../theme/radius';
+import { AppSectionTitle }     from '../../components/common/AppSectionTitle';
+import { AppBadge }            from '../../components/common/AppBadge';
+import { GlassCard }           from '../../components/common/GlassCard';
+import { LoadingState }        from '../../components/common/LoadingState';
+import { EmptyState }          from '../../components/common/EmptyState';
+import { useCredentialStore }  from '../../hooks/useCredentialStore';
+import { useBiometricAuth }    from '../../hooks/useBiometricAuth';
+import { MOCK_IDENTITY }       from '../../constants/mockData';
+import type { CredentialWithIssuer } from '../../models/credential';
+import { CREDENTIAL_TYPE_META }      from '../../models/credential';
 
-const MOCK_CREDENTIALS: Credential[] = [
-  {
-    id: '1',
-    type: 'Education',
-    title: 'Bachelor of Technology',
-    issuer: 'IIT Bombay',
-    issuedAt: '2022-05-14',
-    trustState: 'verified',
-    did: 'did:sov:7Tq3kT…9fP2',
-  },
-  {
-    id: '2',
-    type: 'Identity',
-    title: 'Aadhaar KYC',
-    issuer: 'UIDAI',
-    issuedAt: '2023-01-09',
-    expiresAt: '2033-01-09',
-    trustState: 'trusted',
-    did: 'did:sov:7Tq3kT…9fP2',
-  },
-  {
-    id: '3',
-    type: 'Professional',
-    title: 'AWS Solutions Architect',
-    issuer: 'Amazon Web Services',
-    issuedAt: '2023-08-22',
-    expiresAt: '2026-08-22',
-    trustState: 'verified',
-    did: 'did:sov:7Tq3kT…9fP2',
-  },
-  {
-    id: '4',
-    type: 'Membership',
-    title: 'ACM Member',
-    issuer: 'Association for Computing Machinery',
-    issuedAt: '2024-01-01',
-    expiresAt: '2025-01-01',
-    trustState: 'pending',
-    did: 'did:sov:7Tq3kT…9fP2',
-  },
-];
+import { IdentityCard }          from './components/IdentityCard';
+import { IdentityStats }         from './components/IdentityStats';
+import { TrustScoreRing }        from './components/TrustScoreRing';
+import { CredentialQRSheet }     from '../credentials/components/CredentialQRSheet';
+import { CredentialDetailSheet } from '../credentials/components/CredentialDetailSheet';
 
-const TAP_LAYER_CONTENT = [
-  (c: Credential) => (
-    <View>
-      <Text style={styles.layerLabel}>ISSUER</Text>
-      <Text style={styles.layerValue}>{c.issuer}</Text>
-      <Text style={[styles.layerLabel, { marginTop: spacing.sm }]}>TYPE</Text>
-      <Text style={styles.layerValue}>{c.type}</Text>
-    </View>
-  ),
-  (c: Credential) => (
-    <View>
-      <Text style={styles.layerLabel}>ISSUED</Text>
-      <Text style={styles.layerValue}>{c.issuedAt}</Text>
-      {c.expiresAt ? (
-        <>
-          <Text style={[styles.layerLabel, { marginTop: spacing.sm }]}>EXPIRES</Text>
-          <Text style={styles.layerValue}>{c.expiresAt}</Text>
-        </>
-      ) : null}
-      <Text style={[styles.layerLabel, { marginTop: spacing.sm }]}>DID</Text>
-      <Text style={styles.didText}>{c.did}</Text>
-    </View>
-  ),
-  (c: Credential) => (
-    <View>
-      <Text style={styles.layerLabel}>TRUST GRAPH</Text>
-      <View style={styles.trustGraph}>
-        <TrustNode label={c.issuer} color={colors.trust.trusted.solid} />
-        <Text style={styles.arrow}>→</Text>
-        <TrustNode label={c.type} color={colors.brand.primary} />
-        <Text style={styles.arrow}>→</Text>
-        <TrustNode label="You" color={colors.trust.verified.solid} />
-      </View>
-    </View>
-  ),
-];
-
-const TrustNode: React.FC<{ label: string; color: string }> = ({ label, color }) => (
-  <View style={[styles.trustNode, { borderColor: color }]}>
-    <Text style={[styles.trustNodeText, { color }]} numberOfLines={1}>{label}</Text>
-  </View>
-);
-
-const CredentialCard: React.FC<{ credential: Credential }> = ({ credential }) => {
-  const [tapLayer, setTapLayer] = useState(0);
-
-  return (
-    <GlassCard
-      glowState={credential.trustState}
-      revealLayers={3}
-      onTapLayer={setTapLayer}
-      style={styles.credCard}
-    >
-      {/* Header row */}
-      <View style={styles.credHeader}>
-        <View style={styles.typeIcon}>
-          <Text style={styles.typeIconText}>
-            {credential.type === 'Education'
-              ? '◈'
-              : credential.type === 'Identity'
-              ? '◎'
-              : credential.type === 'Professional'
-              ? '✦'
-              : '◌'}
-          </Text>
-        </View>
-        <View style={styles.credInfo}>
-          <Text style={styles.credTitle}>{credential.title}</Text>
-          <Text style={styles.credIssuer}>{credential.issuer}</Text>
-        </View>
-        <AppBadge label={credential.trustState} variant={credential.trustState} />
-      </View>
-
-      {/* Reveal layers */}
-      {tapLayer >= 1 && (
-        <View style={styles.layerContent}>
-          <View style={styles.layerDivider} />
-          {TAP_LAYER_CONTENT[tapLayer - 1]?.(credential)}
-        </View>
-      )}
-
-      {/* Tap hint */}
-      {tapLayer < 3 && (
-        <Text style={styles.tapHint}>
-          {tapLayer === 0
-            ? 'Tap to see details'
-            : tapLayer === 1
-            ? 'Tap again for dates'
-            : 'Tap for trust graph'}
-        </Text>
-      )}
-    </GlassCard>
-  );
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const t = (require('../../theme/typography').typography) as Record<string, any>;
+const typo = {
+  title1:   t.title1   ?? {},
+  title3:   t.title3   ?? {},
+  caption:  t.captionSm ?? t.caption ?? {},
+  headline: t.headlineSm ?? t.headline ?? {},
+  label:    t.label    ?? {},
+  body:     t.bodySm   ?? t.body     ?? {},
+  mono:     t.mono     ?? {},
+  button:   t.buttonXs ?? t.button   ?? {},
 };
 
+const TAB_CLEARANCE = Platform.OS === 'ios' ? 110 : 96;
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export const PassportScreen: React.FC = () => {
+  const {
+    credentials, isLoading, error,
+    trustScore, verifiedCount,
+    refresh, verify, remove,
+  } = useCredentialStore();
+
+  const { checkSupport, biometryType } = useBiometricAuth();
+
+  const [refreshing,    setRefreshing]    = useState(false);
+  const [qrTarget,      setQrTarget]      = useState<CredentialWithIssuer | null>(null);
+  const [detailTarget,  setDetailTarget]  = useState<CredentialWithIssuer | null>(null);
+  const [qrVisible,     setQrVisible]     = useState(false);
+  const [detailVisible, setDetailVisible] = useState(false);
+
+  const headerFade  = useRef(new Animated.Value(0)).current;
+  const contentFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    checkSupport();
+    Animated.stagger(120, [
+      Animated.timing(headerFade,  { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(contentFade, { toValue: 1, duration: 600, useNativeDriver: true }),
+    ]).start();
+  }, [checkSupport, headerFade, contentFade]);
+
+  const identity    = { ...MOCK_IDENTITY, trustScore, credentialCount: credentials.length };
+  const recentCreds = credentials.slice(0, 3);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
+
+  const handleShare = useCallback((cred: CredentialWithIssuer) => {
+    setQrTarget(cred);
+    setQrVisible(true);
+  }, []);
+
+  const handleCardPress = useCallback((cred: CredentialWithIssuer) => {
+    setDetailTarget(cred);
+    setDetailVisible(true);
+  }, []);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg.base} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Passport</Text>
-        <Text style={styles.headerSub}>Your verifiable credentials</Text>
-      </View>
+      {/* ── Page header ──────────────────────────────────────────────────── */}
+      <Animated.View style={[styles.pageHeader, { opacity: headerFade }]}>
+        <View>
+          <Text style={styles.greeting}>Your Identity</Text>
+          <Text style={styles.pageTitle}>Sovereign Passport</Text>
+        </View>
+        <TouchableOpacity style={styles.settingsBtn} activeOpacity={0.7}>
+          <Text style={styles.settingsIcon}>⚙</Text>
+        </TouchableOpacity>
+      </Animated.View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: TAB_CLEARANCE }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.brand.primary}
+            colors={[colors.brand.primary]}
+          />
+        }
       >
-        <AppSectionTitle
-          title={`${MOCK_CREDENTIALS.length} Credentials`}
-          actionLabel="+ Add"
-          onAction={() => {}}
-          style={styles.sectionTitle}
-        />
+        <Animated.View style={{ opacity: contentFade }}>
 
-        {MOCK_CREDENTIALS.map(cred => (
-          <CredentialCard key={cred.id} credential={cred} />
-        ))}
+          {/* ── Identity card ────────────────────────────────────────────── */}
+          <IdentityCard identity={identity} />
 
-        {/* Bottom spacer for tab bar */}
-        <View style={{ height: 120 }} />
+          {/* ── Stats row ────────────────────────────────────────────────── */}
+          <IdentityStats identity={identity} verifiedCount={verifiedCount} />
+
+          {/* ── Trust score ring + label ─────────────────────────────────── */}
+          <View style={styles.ringSection}>
+            <TrustScoreRing score={identity.trustScore} size={112} label="Trust Score" />
+            <View style={styles.ringMeta}>
+              <Text style={styles.ringMetaTitle}>Identity Strength</Text>
+              <Text style={styles.ringMetaBody}>
+                Your trust score reflects the number and quality of verified
+                credentials bound to your DID.
+              </Text>
+              <AppBadge
+                label={identity.status === 'active' ? 'Identity Active' : identity.status}
+                variant={identity.status === 'active' ? 'verified' : 'suspicious'}
+                size="md"
+              />
+            </View>
+          </View>
+
+          {/* ── Recent credentials ───────────────────────────────────────── */}
+          <View style={styles.section}>
+            <AppSectionTitle
+              title="Recent Credentials"
+              count={credentials.length}
+              actionLabel={credentials.length > 3 ? 'View all' : undefined}
+              spacing="normal"
+            />
+
+            {isLoading ? (
+              <LoadingState message="Loading credentials…" />
+            ) : error ? (
+              <EmptyState
+                icon="⚠"
+                title="Couldn't load"
+                description={error}
+                glowState="suspicious"
+              />
+            ) : recentCreds.length === 0 ? (
+              <EmptyState
+                icon="◈"
+                title="No credentials yet"
+                description="Scan a QR code to add your first credential."
+                glowState="primary"
+              />
+            ) : (
+              <View style={styles.credList}>
+                {recentCreds.map((cred, i) => (
+                  <MiniCredentialRow
+                    key={cred.id}
+                    credential={cred}
+                    index={i}
+                    onPress={() => handleCardPress(cred)}
+                    onShare={() => handleShare(cred)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* ── Hardware security ────────────────────────────────────────── */}
+          <View style={styles.section}>
+            <AppSectionTitle title="Hardware Security" spacing="normal" />
+            <HardwareSecurityCard
+              fingerprint={identity.hardwareKey.fingerprint}
+              algorithm={identity.hardwareKey.algorithm}
+              attestationType={identity.hardwareKey.attestationType}
+              biometryType={biometryType}
+              isHardwareBacked={identity.hardwareKey.isHardwareBacked}
+            />
+          </View>
+
+        </Animated.View>
       </ScrollView>
+
+      {/* ── Bottom sheets ────────────────────────────────────────────────── */}
+      <CredentialQRSheet
+        credential={qrTarget}
+        visible={qrVisible}
+        onDismiss={() => setQrVisible(false)}
+      />
+      <CredentialDetailSheet
+        credential={detailTarget}
+        visible={detailVisible}
+        onDismiss={() => setDetailVisible(false)}
+        onVerify={verify}
+        onShare={cred => {
+          setDetailVisible(false);
+          setTimeout(() => { setQrTarget(cred); setQrVisible(true); }, 350);
+        }}
+        onDelete={id => { remove(id); setDetailVisible(false); }}
+      />
     </View>
   );
 };
 
+// ── Mini credential row ────────────────────────────────────────────────────────
+
+const MiniCredentialRow: React.FC<{
+  credential: CredentialWithIssuer;
+  index:      number;
+  onPress:    () => void;
+  onShare:    () => void;
+}> = ({ credential, index, onPress, onShare }) => {
+  const anim = useRef(new Animated.Value(0)).current;
+  const meta = CREDENTIAL_TYPE_META[credential.type];
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1, duration: 340, delay: index * 65, useNativeDriver: true,
+    }).start();
+  }, [anim, index]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity:   anim,
+        transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+      }}
+    >
+      <TouchableOpacity
+        style={[styles.miniRow, { borderLeftColor: meta.accentColor as string }]}
+        onPress={onPress}
+        activeOpacity={0.75}
+      >
+        <View style={[styles.miniIcon, { borderColor: `${meta.accentColor as string}50` }]}>
+          <Text style={styles.miniEmoji}>{credential.issuer.logoEmoji}</Text>
+        </View>
+        <View style={styles.miniBody}>
+          <Text style={styles.miniTitle} numberOfLines={1}>{credential.title}</Text>
+          <Text style={styles.miniIssuer}>{credential.issuer.shortName}</Text>
+        </View>
+        <View style={styles.miniTrailing}>
+          <AppBadge label={credential.trustState} variant={credential.trustState} dot size="sm" />
+          <TouchableOpacity onPress={onShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.miniShare}>QR</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// ── Hardware security card ─────────────────────────────────────────────────────
+
+const HardwareSecurityCard: React.FC<{
+  fingerprint:      string;
+  algorithm:        string;
+  attestationType:  string;
+  biometryType:     string | null;
+  isHardwareBacked: boolean;
+}> = ({ fingerprint, algorithm, attestationType, biometryType, isHardwareBacked }) => (
+  <GlassCard glowState="trusted" style={styles.hwCard} animateGlow>
+    <View style={styles.hwHeader}>
+      <Text style={styles.hwIcon}>🔐</Text>
+      <View style={styles.hwHeaderBody}>
+        <Text style={styles.hwTitle}>
+          {isHardwareBacked ? 'Hardware-Backed Key' : 'Software Key'}
+        </Text>
+        <Text style={styles.hwSub}>{attestationType}</Text>
+      </View>
+      <AppBadge
+        label={isHardwareBacked ? 'Secured' : 'Software'}
+        variant={isHardwareBacked ? 'trusted' : 'suspicious'}
+        size="sm"
+      />
+    </View>
+    <View style={styles.hwGrid}>
+      <HWCell label="FINGERPRINT" value={fingerprint} mono />
+      <HWCell label="ALGORITHM"   value={algorithm} />
+      <HWCell label="BIOMETRICS"  value={biometryType ?? 'Not available'} />
+      <HWCell label="ENCLAVE"     value={attestationType} />
+    </View>
+  </GlassCard>
+);
+
+const HWCell: React.FC<{ label: string; value: string; mono?: boolean }> = ({
+  label, value, mono,
+}) => (
+  <View style={hwStyles.cell}>
+    <Text style={hwStyles.label}>{label}</Text>
+    <Text style={[hwStyles.value, mono && hwStyles.mono]}>{value}</Text>
+  </View>
+);
+
+const hwStyles = StyleSheet.create({
+  cell:  { flex: 1, minWidth: '44%' },
+  label: { ...typo.label, color: colors.text.quaternary, fontSize: 8, marginBottom: 2 },
+  value: { ...typo.caption, color: colors.text.secondary },
+  mono:  { ...typo.mono, color: colors.brand.primary, fontSize: 10 },
+});
+
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
+    flex:            1,
     backgroundColor: colors.bg.base,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
   },
-  header: {
-    paddingHorizontal: spacing.base,
-    marginBottom: spacing.xl,
+  pageHeader: {
+    flexDirection:     'row',
+    justifyContent:    'space-between',
+    alignItems:        'flex-end',
+    paddingHorizontal: 16,
+    marginBottom:      16,
   },
-  headerTitle: {
-    ...typography.title2,
-    color: colors.text.primary,
+  greeting: {
+    ...typo.caption,
+    color:         colors.text.quaternary,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
   },
-  headerSub: {
-    ...typography.caption,
-    color: colors.text.tertiary,
-    marginTop: 4,
-  },
-  scroll: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: spacing.base,
-    gap: spacing.md,
-  },
-  sectionTitle: {
-    paddingHorizontal: 0,
-  },
-  credCard: {},
-  credHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  typeIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.xl,
+  pageTitle:    { ...typo.title1, color: colors.text.primary, marginTop: 3 },
+  settingsBtn: {
+    width:           38,
+    height:          38,
+    borderRadius:    radius.full,
     backgroundColor: colors.glass.medium,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
+    borderWidth:     1,
+    borderColor:     colors.border.light,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
-  typeIconText: {
-    fontSize: 20,
-    color: colors.text.secondary,
+  settingsIcon: { fontSize: 16, color: colors.text.tertiary },
+  scrollContent: { paddingTop: 4 },
+  section:       { marginTop: 20 },
+
+  // Trust ring section
+  ringSection: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    marginTop:         24,
+    paddingHorizontal: 16,
+    gap:               20,
   },
-  credInfo: {
-    flex: 1,
+  ringMeta:      { flex: 1 },
+  ringMetaTitle: { ...typo.title3, color: colors.text.primary, marginBottom: 6 },
+  ringMetaBody:  { ...typo.body, color: colors.text.tertiary, marginBottom: 10, lineHeight: 18 },
+
+  // Mini rows
+  credList: {
+    paddingHorizontal: 16,
+    gap:               8,
   },
-  credTitle: {
-    ...typography.headline,
-    color: colors.text.primary,
+  miniRow: {
+    flexDirection:    'row',
+    alignItems:       'center',
+    backgroundColor:  colors.glass.light,
+    borderRadius:     radius['2xl'],
+    borderWidth:      1,
+    borderColor:      colors.border.subtle,
+    borderLeftWidth:  3,
+    padding:          12,
+    gap:              12,
   },
-  credIssuer: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginTop: 2,
+  miniIcon: {
+    width:           40,
+    height:          40,
+    borderRadius:    radius.lg,
+    borderWidth:     1,
+    backgroundColor: colors.glass.medium,
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
   },
-  layerContent: {
-    marginTop: spacing.sm,
+  miniEmoji:   { fontSize: 18 },
+  miniBody:    { flex: 1, minWidth: 0 },
+  miniTitle:   { ...typo.headline, color: colors.text.primary },
+  miniIssuer:  { ...typo.caption,  color: colors.text.tertiary, marginTop: 1 },
+  miniTrailing: { alignItems: 'flex-end', gap: 5 },
+  miniShare: {
+    ...typo.button,
+    color:             colors.brand.primary,
+    borderWidth:       1,
+    borderColor:       `${colors.brand.primary}50`,
+    borderRadius:      radius.full,
+    paddingHorizontal: 6,
+    paddingVertical:   2,
   },
-  layerDivider: {
-    height: 1,
-    backgroundColor: colors.border.subtle,
-    marginBottom: spacing.md,
-  },
-  layerLabel: {
-    ...typography.label,
-    color: colors.text.quaternary,
-    marginBottom: 3,
-  },
-  layerValue: {
-    ...typography.bodySmall,
-    color: colors.text.primary,
-  },
-  didText: {
-    ...typography.mono,
-    color: colors.text.tertiary,
-  },
-  trustGraph: {
+
+  // Hardware card
+  hwCard:        { marginHorizontal: 16 },
+  hwHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
+    alignItems:    'center',
+    gap:           12,
+    marginBottom:  12,
   },
-  trustNode: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    maxWidth: 100,
-  },
-  trustNodeText: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-  arrow: {
-    ...typography.caption,
-    color: colors.text.quaternary,
-  },
-  tapHint: {
-    ...typography.caption,
-    color: colors.text.quaternary,
-    textAlign: 'center',
-    marginTop: spacing.md,
+  hwIcon:       { fontSize: 26 },
+  hwHeaderBody: { flex: 1 },
+  hwTitle:      { ...typo.headline, color: colors.text.primary },
+  hwSub:        { ...typo.caption,  color: colors.text.tertiary, marginTop: 1 },
+  hwGrid: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           12,
   },
 });
 

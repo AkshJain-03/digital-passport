@@ -46,7 +46,8 @@ import { TruthFeedScreen }        from '../screens/truthFeed/TruthFeedScreen';
 import { HandshakeScreen }        from '../screens/handshake/HandshakeScreen';
 import { SettingsScreen }         from '../screens/settings/SettingsScreen';
 import { CredentialListScreen }   from '../screens/credentials/CredentialListScreen';
-import { ProductDetailScreen }   from '../screens/products/ProductDetailScreen';
+import { ProductDetailScreen }   from '../screens/product/ProductDetailScreen';
+import { TrustEngineScreen }     from '../screens/settings/TrustEngineScreen';
 
 import { ROUTES, type TabParamList, type RootStackParamList } from './routes';
 
@@ -86,7 +87,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   return (
     <View style={tabStyles.outerWrap} pointerEvents="box-none">
-      <View style={[tabStyles.pill, shadows.lg]}>
+      <View style={[tabStyles.pill, shadows['2xl']]}>
         {TABS.map((tab, index) => {
           const isActive = state.index === index;
 
@@ -147,26 +148,26 @@ const tabStyles = StyleSheet.create({
   outerWrap: {
     position:         'absolute',
     bottom:           Platform.OS === 'ios' ? 28 : 16,
-    left:             spacing.xs,
-    right:            spacing.xs,
+    left:             spacing[4],
+    right:            spacing[4],
     alignItems:       'center',
   },
   pill: {
     flexDirection:    'row',
     alignItems:       'center',
     backgroundColor:  colors.bg.elevated,
-    borderRadius:     radius['3xl'],
+    borderRadius:     radius['4xl'],
     borderWidth:      1,
     borderColor:      colors.border.light,
-    paddingHorizontal: spacing.xxs,
-    paddingVertical:  spacing.xxs,
+    paddingHorizontal: spacing[2],
+    paddingVertical:  spacing[2],
     width:            '100%',
   },
   tab: {
     flex:             1,
     alignItems:       'center',
     justifyContent:   'center',
-    paddingVertical:  spacing.xxs,
+    paddingVertical:  spacing[1],
     position:         'relative',
   },
   tabIcon: {
@@ -175,10 +176,9 @@ const tabStyles = StyleSheet.create({
     lineHeight: 20,
   },
   tabLabel: {
-    ...typography.caption,
+    ...typography.tabLabel,
     color:     colors.text.quaternary,
     marginTop: 2,
-    fontWeight: '500',
   },
   activeDot: {
     position:        'absolute',
@@ -243,6 +243,7 @@ export const AppNavigator: React.FC = () => (
       <Stack.Screen name={ROUTES.SETTINGS}         component={SettingsScreen} />
       <Stack.Screen name={ROUTES.CREDENTIAL_LIST}  component={CredentialListScreen} />
       <Stack.Screen name={ROUTES.PRODUCT_DETAIL}   component={ProductDetailScreen} />
+      <Stack.Screen name={ROUTES.TRUST_ENGINE}     component={TrustEngineScreen} />
     </Stack.Navigator>
   </NavigationContainer>
 );

@@ -1,148 +1,126 @@
+/**
+ * Sovereign Trust — Typography System
+ *
+ * Uses SF Pro (iOS) and the equivalent system sans-serif (Android).
+ * Scale is inspired by Apple HIG with custom tracking for the
+ * "intelligent, premium" aesthetic demanded by the product.
+ *
+ * Convention:
+ *   display   — hero numbers, trust scores
+ *   title1-3  — screen/section headings
+ *   headline  — card titles, list items
+ *   body      — paragraph copy
+ *   caption   — supporting details, timestamps
+ *   label     — ALL CAPS micro labels
+ *   mono      — DIDs, hashes, technical strings
+ *   button    — interactive labels
+ */
+
 import { Platform } from 'react-native';
 
-const fontFamily = Platform.select({
+const FONT = Platform.select({
   ios: {
-    thin: 'SF Pro Display',
-    light: 'SF Pro Display',
-    regular: 'SF Pro Text',
-    medium: 'SF Pro Text',
-    semibold: 'SF Pro Display',
-    bold: 'SF Pro Display',
-    heavy: 'SF Pro Display',
-    mono: 'SF Mono',
+    ultraLight: 'SF Pro Display',
+    thin:       'SF Pro Display',
+    light:      'SF Pro Display',
+    regular:    'SF Pro Text',
+    medium:     'SF Pro Text',
+    semibold:   'SF Pro Display',
+    bold:       'SF Pro Display',
+    heavy:      'SF Pro Display',
+    black:      'SF Pro Display',
+    mono:       'SF Mono',
   },
   android: {
-    thin: 'sans-serif-thin',
-    light: 'sans-serif-light',
-    regular: 'sans-serif',
-    medium: 'sans-serif-medium',
-    semibold: 'sans-serif-medium',
-    bold: 'sans-serif',
-    heavy: 'sans-serif',
-    mono: 'monospace',
+    ultraLight: 'sans-serif-thin',
+    thin:       'sans-serif-thin',
+    light:      'sans-serif-light',
+    regular:    'sans-serif',
+    medium:     'sans-serif-medium',
+    semibold:   'sans-serif-medium',
+    bold:       'sans-serif',
+    heavy:      'sans-serif',
+    black:      'sans-serif',
+    mono:       'monospace',
   },
   default: {
-    thin: undefined,
-    light: undefined,
-    regular: undefined,
-    medium: undefined,
-    semibold: undefined,
-    bold: undefined,
-    heavy: undefined,
-    mono: undefined,
+    ultraLight: undefined,
+    thin:       undefined,
+    light:      undefined,
+    regular:    undefined,
+    medium:     undefined,
+    semibold:   undefined,
+    bold:       undefined,
+    heavy:      undefined,
+    black:      undefined,
+    mono:       undefined,
   },
 });
 
+type TextWeight = '100'|'200'|'300'|'400'|'500'|'600'|'700'|'800'|'900';
+
+interface TextStyle {
+  fontFamily:    string | undefined;
+  fontSize:      number;
+  lineHeight:    number;
+  letterSpacing: number;
+  fontWeight:    TextWeight;
+}
+
+const make = (
+  family: string | undefined,
+  size: number,
+  lh: number,
+  tracking: number,
+  weight: TextWeight,
+): TextStyle => ({
+  fontFamily:    family,
+  fontSize:      size,
+  lineHeight:    lh,
+  letterSpacing: tracking,
+  fontWeight:    weight,
+});
+
 export const typography = {
-  // Display — hero text
-  display: {
-    fontFamily: fontFamily?.heavy,
-    fontSize: 40,
-    lineHeight: 46,
-    letterSpacing: -1.2,
-    fontWeight: '800' as const,
-  },
+  // ── Display: hero metrics, trust scores ──────────────────────────────────
+  display:  make(FONT?.black,    48, 52, -2.0, '900'),
+  displaySm:make(FONT?.heavy,    36, 42, -1.4, '800'),
 
-  // Large title
-  title1: {
-    fontFamily: fontFamily?.bold,
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.8,
-    fontWeight: '700' as const,
-  },
+  // ── Titles ────────────────────────────────────────────────────────────────
+  title1:   make(FONT?.bold,     28, 34, -0.8, '700'),
+  title2:   make(FONT?.semibold, 22, 28, -0.5, '600'),
+  title3:   make(FONT?.semibold, 18, 24, -0.3, '600'),
 
-  title2: {
-    fontFamily: fontFamily?.semibold,
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.5,
-    fontWeight: '600' as const,
-  },
+  // ── Headline ─────────────────────────────────────────────────────────────
+  headline: make(FONT?.semibold, 15, 20,  0.0, '600'),
+  headlineSm: make(FONT?.medium, 14, 19,  0.0, '500'),
 
-  title3: {
-    fontFamily: fontFamily?.semibold,
-    fontSize: 18,
-    lineHeight: 24,
-    letterSpacing: -0.3,
-    fontWeight: '600' as const,
-  },
+  // ── Body ──────────────────────────────────────────────────────────────────
+  body:     make(FONT?.regular,  15, 22,  0.0, '400'),
+  bodyMd:   make(FONT?.regular,  14, 20,  0.0, '400'),
+  bodySm:   make(FONT?.regular,  13, 18,  0.0, '400'),
 
-  // Section headings
-  headline: {
-    fontFamily: fontFamily?.semibold,
-    fontSize: 15,
-    lineHeight: 20,
-    letterSpacing: 0,
-    fontWeight: '600' as const,
-  },
+  // ── Caption ───────────────────────────────────────────────────────────────
+  caption:  make(FONT?.regular,  12, 16,  0.2, '400'),
+  captionSm:make(FONT?.regular,  11, 15,  0.3, '400'),
 
-  // Body text
-  body: {
-    fontFamily: fontFamily?.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    letterSpacing: 0,
-    fontWeight: '400' as const,
-  },
+  // ── Labels — ALL CAPS micro text ─────────────────────────────────────────
+  label:    make(FONT?.semibold, 10, 14,  1.2, '600'),
+  labelMd:  make(FONT?.semibold, 11, 15,  0.8, '600'),
+  labelLg:  make(FONT?.semibold, 12, 16,  0.6, '600'),
 
-  bodySmall: {
-    fontFamily: fontFamily?.regular,
-    fontSize: 13,
-    lineHeight: 18,
-    letterSpacing: 0,
-    fontWeight: '400' as const,
-  },
+  // ── Mono — DIDs, hashes, addresses ───────────────────────────────────────
+  mono:     make(FONT?.mono,     11, 16,  0.5, '400'),
+  monoMd:   make(FONT?.mono,     13, 18,  0.3, '400'),
 
-  // Supporting text
-  caption: {
-    fontFamily: fontFamily?.regular,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 0.2,
-    fontWeight: '400' as const,
-  },
+  // ── Buttons ───────────────────────────────────────────────────────────────
+  buttonLg: make(FONT?.semibold, 17, 22, -0.2, '600'),
+  button:   make(FONT?.semibold, 15, 20, -0.1, '600'),
+  buttonSm: make(FONT?.semibold, 13, 18,  0.0, '600'),
+  buttonXs: make(FONT?.semibold, 12, 16,  0.1, '600'),
 
-  // Labels — uppercase tracking
-  label: {
-    fontFamily: fontFamily?.semibold,
-    fontSize: 10,
-    lineHeight: 14,
-    letterSpacing: 1.2,
-    fontWeight: '600' as const,
-  },
+  // ── Navigation ────────────────────────────────────────────────────────────
+  tabLabel: make(FONT?.semibold,  9, 12,  0.3, '600'),
+} as const;
 
-  // Mono — hashes, DIDs, technical data
-  mono: {
-    fontFamily: fontFamily?.mono,
-    fontSize: 11,
-    lineHeight: 16,
-    letterSpacing: 0.5,
-    fontWeight: '400' as const,
-  },
-
-  // Button labels
-  button: {
-    fontFamily: fontFamily?.semibold,
-    fontSize: 15,
-    lineHeight: 20,
-    letterSpacing: -0.1,
-    fontWeight: '600' as const,
-  },
-
-  buttonSmall: {
-    fontFamily: fontFamily?.semibold,
-    fontSize: 13,
-    lineHeight: 18,
-    letterSpacing: 0,
-    fontWeight: '600' as const,
-  },
-} as any;
-
-// Backwards-compatibility aliases for older code that used different names
-;(typography as any).bodySm = (typography as any).bodySmall;
-;(typography as any).captionSm = (typography as any).caption;
-;(typography as any).buttonSm = (typography as any).buttonSmall;
-;(typography as any).headlineSm = (typography as any).headline;
-;(typography as any).labelMd = (typography as any).label;
-;(typography as any).buttonXs = (typography as any).buttonSmall;
+export type TypographyKey = keyof typeof typography;

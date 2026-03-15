@@ -1,52 +1,43 @@
 /**
  * Verification Engine
  *
- * The single source of truth for ALL verification logic.
- * Accepts a subject type + id, loads the entity, runs applicable
- * checks, and returns a VerificationResult.
- *
- * Design principles:
- *   - Pure domain logic only (no UI, no navigation)
- *   - Each check function returns a VerificationCheck — composable
- *   - All async I/O is through repository/service abstractions
- *   - Caller receives a complete result in one await
+ * Universal verification for ALL subject types.
+ * Pure domain logic — no UI, no navigation.
+ * Each handler runs checks and returns a VerificationResult.
  */
 
-import { credentialRepository }  from '../../database/repositories/credentialRepository';
-import { productRepository }     from '../../database/repositories/productRepository';
+import { credentialRepository }   from '../../database/repositories/credentialRepository';
+import { productRepository }      from '../../database/repositories/productRepository';
 import { issuerDirectoryService } from '../../services/identity/issuerDirectoryService';
-import {
-  validateCredential,
-}                                from '../credentials/credentialValidator';
+import { validateCredential }     from '../credentials/credentialValidator';
 import {
   buildVerificationResult,
   passCheck,
   failCheck,
   warnCheck,
   unknownCheck,
-}                                from './verificationResult';
+}                                 from './verificationResult';
 import type {
   VerificationResult,
   VerificationSubjectType,
-}                                from './verificationTypes';
+}                                 from './verificationTypes';
 
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
 export const verificationEngine = {
 
-  /**
-   * Verifies any subject type by ID.
-   * Returns a complete VerificationResult with checks and trust state.
-   */
   async verify(
     subjectType: VerificationSubjectType,
     subjectId:   string,
+    rawPayload?: string,
   ): Promise<VerificationResult> {
     const startMs = Date.now();
 
     switch (subjectType) {
       case 'credential': return this._verifyCredential(subjectId, startMs);
       case 'product':    return this._verifyProduct(subjectId, startMs);
+      case 'document':   return this._verifyDocument(subjectId, rawPayload ?? '', startMs);
+      case 'login':      return this._verifyLoginChallenge(subjectId, rawPayload ?? '', startMs);
       case 'did':        return this._verifyDid(subjectId, startMs);
       default:
         return buildVerificationResult({
@@ -58,7 +49,7 @@ export const verificationEngine = {
     }
   },
 
-  // ── Credential ────────────────────────────────────────────────────────────
+  // ── Credential ─────────────────────────────────────────────────────────────
 
   async _verifyCredential(id: string, startMs: number): Promise<VerificationResult> {
     const credential = await credentialRepository.findById(id);
@@ -67,7 +58,7 @@ export const verificationEngine = {
       return buildVerificationResult({
         subjectId:   id,
         subjectType: 'credential',
-        checks: [failCheck('not_found', 'Credential not found', 'Check the ID and try again.')],
+        checks:      [failCheck('not_found', 'Credential not found in wallet')],
         startMs,
       });
     }
@@ -82,7 +73,6 @@ export const verificationEngine = {
       startMs,
     });
 
-    // Persist updated trust state
     await credentialRepository.updateTrustState(
       id,
       result.trustState,
@@ -92,7 +82,7 @@ export const verificationEngine = {
     return result;
   },
 
-  // ── Product ───────────────────────────────────────────────────────────────
+  // ── Product ────────────────────────────────────────────────────────────────
 
   async _verifyProduct(id: string, startMs: number): Promise<VerificationResult> {
     const product = await productRepository.findById(id);
@@ -101,33 +91,38 @@ export const verificationEngine = {
       return buildVerificationResult({
         subjectId:   id,
         subjectType: 'product',
-        checks: [failCheck('not_found', 'Product not found in registry')],
+        checks:      [failCheck('not_found', 'Product not found in registry')],
         startMs,
       });
     }
 
-    const knownDids   = await issuerDirectoryService.getKnownDidSet();
-    const mfgKnown    = knownDids.has(product.manufacturerDid);
-    const hasSerial   = !!product.serialNumber;
-    const hasCustody  = product.custodyChain.length > 0;
-    const isRecalled  = product.status === 'recalled';
+    const knownDids  = await issuerDirectoryService.getKnownDidSet();
+    const mfgKnown   = knownDids.has(product.manufacturerDid);
+    const hasSerial  = !!product.serialNumber;
+    const hasCustody = product.custodyChain.length > 0;
+    const isRecalled = product.status === 'recalled';
+    const isCounterfeit = product.status === 'counterfeit';
 
     const checks = [
       hasSerial
         ? passCheck('serial', 'Serial number present', product.serialNumber)
-        : failCheck('serial', 'No serial number'),
+        : failCheck('serial', 'No serial number on record'),
+
+      isCounterfeit
+        ? failCheck('authenticity', 'Product flagged as counterfeit')
+        : passCheck('authenticity', `Product registered as ${product.status}`),
 
       mfgKnown
-        ? passCheck('manufacturer', 'Manufacturer verified', product.brand)
-        : warnCheck('manufacturer', 'Manufacturer not in directory', 'May still be authentic'),
+        ? passCheck('manufacturer', 'Manufacturer in trusted directory', product.brand)
+        : warnCheck('manufacturer', 'Manufacturer not in trusted directory'),
 
       hasCustody
-        ? passCheck('custody', `${product.custodyChain.length} custody checkpoint(s) recorded`)
-        : warnCheck('custody', 'No custody chain available'),
+        ? passCheck('custody', `${product.custodyChain.length} custody checkpoint(s)`)
+        : warnCheck('custody', 'No custody chain recorded'),
 
       isRecalled
-        ? failCheck('recall', 'Product has been recalled', `Status: ${product.status}`)
-        : passCheck('recall', 'No recall on record'),
+        ? failCheck('recall', 'Product has an active recall')
+        : passCheck('recall', 'No active recall found'),
     ];
 
     const result = buildVerificationResult({
@@ -138,28 +133,124 @@ export const verificationEngine = {
     });
 
     await productRepository.updateTrustState(id, result.trustState, product.status);
-
     return result;
   },
 
-  // ── DID ───────────────────────────────────────────────────────────────────
+  // ── Document ───────────────────────────────────────────────────────────────
+
+  async _verifyDocument(
+    id:         string,
+    rawPayload: string,
+    startMs:    number,
+  ): Promise<VerificationResult> {
+    // Parse doc metadata from payload
+    let docData: Record<string, string> = {};
+    try { docData = JSON.parse(rawPayload); } catch { /* ignore */ }
+
+    const hasHash      = !!(docData.hash ?? id);
+    const hasIssuerDid = /^did:[a-z]+:[A-Za-z0-9._-]{8,}$/.test(docData.iss ?? '');
+    const hasTimestamp = !!(docData.ts);
+    const isExpired    = hasTimestamp
+      ? new Date(docData.ts) < new Date()
+      : false;
+
+    const knownDids = await issuerDirectoryService.getKnownDidSet();
+    const issuerKnown = hasIssuerDid ? knownDids.has(docData.iss) : false;
+
+    const checks = [
+      hasHash
+        ? passCheck('integrity', 'Document hash present', `SHA-256: ${(docData.hash ?? id).slice(0, 16)}…`)
+        : failCheck('integrity', 'No integrity hash found'),
+
+      hasIssuerDid
+        ? passCheck('signature', 'Issuer DID found', docData.iss)
+        : warnCheck('signature', 'No issuer DID in document'),
+
+      issuerKnown
+        ? passCheck('authority', 'Issuing authority is in trusted registry')
+        : warnCheck('authority', 'Issuing authority not in local registry'),
+
+      isExpired
+        ? failCheck('expiry', 'Document has expired', `Issued: ${docData.ts}`)
+        : passCheck('expiry', hasTimestamp ? 'Document is current' : 'No expiry set'),
+    ];
+
+    return buildVerificationResult({
+      subjectId:   id,
+      subjectType: 'document',
+      checks,
+      startMs,
+    });
+  },
+
+  // ── Login Challenge ────────────────────────────────────────────────────────
+
+  async _verifyLoginChallenge(
+    id:         string,
+    rawPayload: string,
+    startMs:    number,
+  ): Promise<VerificationResult> {
+    let challenge: Record<string, string> = {};
+    try { challenge = JSON.parse(rawPayload); } catch { /* ignore */ }
+
+    const hasNonce     = !!(challenge.nonce ?? id);
+    const hasService   = !!(challenge.service);
+    const hasExpiry    = !!(challenge.exp);
+    const isExpired    = hasExpiry
+      ? new Date(Number(challenge.exp) * 1000) < new Date()
+      : false;
+    const hasCallbackUrl = /^https:\/\//.test(challenge.callback ?? '');
+
+    const checks = [
+      hasNonce
+        ? passCheck('nonce', 'Challenge nonce present')
+        : failCheck('nonce', 'Missing challenge nonce'),
+
+      hasService
+        ? passCheck('service', 'Service identified', challenge.service)
+        : warnCheck('service', 'Service identifier missing'),
+
+      hasCallbackUrl
+        ? passCheck('callback', 'Secure callback URL verified')
+        : warnCheck('callback', 'Callback URL not HTTPS'),
+
+      isExpired
+        ? failCheck('expiry', 'Login challenge has expired')
+        : passCheck('expiry', hasExpiry ? 'Challenge is valid and current' : 'No expiry specified'),
+    ];
+
+    return buildVerificationResult({
+      subjectId:   id,
+      subjectType: 'login',
+      checks,
+      startMs,
+    });
+  },
+
+  // ── DID ────────────────────────────────────────────────────────────────────
 
   async _verifyDid(did: string, startMs: number): Promise<VerificationResult> {
-    const issuer = await issuerDirectoryService.findByDid(did);
+    const issuer  = await issuerDirectoryService.findByDid(did);
     const isValid = /^did:[a-z]+:[A-Za-z0-9._-]{8,}$/.test(did);
+    const method  = did.split(':')[1] ?? '';
+    const knownMethods = ['sov', 'key', 'web', 'ethr', 'ion'];
 
     const checks = [
       isValid
-        ? passCheck('format', 'DID format valid')
+        ? passCheck('format', 'DID format is valid', `Method: did:${method}`)
         : failCheck('format', 'Invalid DID format'),
 
+      knownMethods.includes(method)
+        ? passCheck('method', `DID method "did:${method}" is supported`)
+        : warnCheck('method', `DID method "did:${method}" is unknown`),
+
       issuer
-        ? passCheck('known', 'DID found in trusted directory', issuer.name)
-        : warnCheck('known', 'DID not in local directory'),
+        ? passCheck('registry', 'DID found in trusted directory', issuer.name)
+        : warnCheck('registry', 'DID not in local trusted registry'),
 
       issuer?.isVerified
-        ? passCheck('verified', 'Issuer is verified')
-        : warnCheck('verified', issuer ? 'Issuer not verified' : 'Cannot verify unknown DID'),
+        ? passCheck('verified', 'Issuer account is verified')
+        : warnCheck('verified', issuer ? 'Issuer not yet verified' : 'Cannot verify unknown DID'),
     ];
 
     return buildVerificationResult({

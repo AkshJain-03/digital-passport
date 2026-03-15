@@ -1,5 +1,22 @@
-import React from 'react';
+/**
+ * AppHeader
+ *
+ * Three-slot navigation bar (left | center | right).
+ *
+ * Variants:
+ *   glass       — frosted dark bg, hairline bottom border (default)
+ *   transparent — invisible, for screens with their own hero header
+ *   solid       — opaque bg for modal sheets
+ *
+ * Features:
+ *   • Animated entry fade on mount
+ *   • StatusBar always set to light-content
+ *   • HeaderIconButton helper for round icon touch targets
+ */
+
+import React, { useEffect, useRef } from 'react';
 import {
+  Animated,
   Platform,
   StatusBar,
   StyleSheet,
@@ -9,84 +26,121 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { colors } from '../../theme/colors';
-import { radius } from '../../theme/radius';
-import { spacing } from '../../theme/spacing';
+
+import { colors }     from '../../theme/colors';
+import { radius }     from '../../theme/radius';
+import { spacing }    from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
-const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 0;
-const HEADER_HEIGHT = 56;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface AppHeaderProps {
-  title?: string;
-  subtitle?: string;
-  leftAction?: React.ReactNode;
+export type AppHeaderVariant = 'glass' | 'transparent' | 'solid';
+
+export interface AppHeaderProps {
+  title?:      string;
+  subtitle?:   string;
+  leftAction?:  React.ReactNode;
   rightAction?: React.ReactNode;
-  transparent?: boolean;
-  style?: StyleProp<ViewStyle>;
+  variant?:    AppHeaderVariant;
+  animateIn?:  boolean;
+  style?:      StyleProp<ViewStyle>;
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const STATUS_BAR_HEIGHT =
+  Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0;
+
+const HEADER_HEIGHT = 52;
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
   title,
   subtitle,
   leftAction,
   rightAction,
-  transparent = false,
+  variant   = 'glass',
+  animateIn = false,
   style,
 }) => {
+  const opacity = useRef(new Animated.Value(animateIn ? 0 : 1)).current;
+
+  useEffect(() => {
+    if (!animateIn) return;
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [animateIn, opacity]);
+
   return (
-    <View
-      style={[
-        styles.container,
-        transparent ? styles.transparent : styles.glass,
-        { paddingTop: STATUS_BAR_HEIGHT },
-        style,
-      ]}
-    >
-      <View style={styles.row}>
-        {/* Left slot */}
-        <View style={styles.side}>
-          {leftAction ? (
-            <View style={styles.actionWrap}>{leftAction}</View>
-          ) : null}
+    <>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <Animated.View
+        style={[
+          styles.container,
+          { paddingTop: STATUS_BAR_HEIGHT },
+          variant === 'glass' && styles.glass,
+          variant === 'solid' && styles.solid,
+          { opacity },
+          style,
+        ]}
+      >
+        <View style={styles.row}>
+          {/* Left slot */}
+          <View style={styles.side}>
+            {leftAction ? <View style={styles.actionWrap}>{leftAction}</View> : null}
+          </View>
+
+          {/* Center */}
+          <View style={styles.center}>
+            {title ? (
+              <Text style={styles.title} numberOfLines={1}>{title}</Text>
+            ) : null}
+            {subtitle ? (
+              <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+            ) : null}
+          </View>
+
+          {/* Right slot */}
+          <View style={[styles.side, styles.sideRight]}>
+            {rightAction ? <View style={styles.actionWrap}>{rightAction}</View> : null}
+          </View>
         </View>
 
-        {/* Center */}
-        <View style={styles.center}>
-          {title ? (
-            <Text style={styles.title} numberOfLines={1}>
-              {title}
-            </Text>
-          ) : null}
-          {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
-
-        {/* Right slot */}
-        <View style={[styles.side, styles.sideRight]}>
-          {rightAction ? (
-            <View style={styles.actionWrap}>{rightAction}</View>
-          ) : null}
-        </View>
-      </View>
-
-      {/* Bottom border */}
-      {!transparent && <View style={styles.divider} />}
-    </View>
+        {variant !== 'transparent' && <View style={styles.divider} />}
+      </Animated.View>
+    </>
   );
 };
 
-export const HeaderIconButton: React.FC<{
+// ─── Header icon button ───────────────────────────────────────────────────────
+
+export interface HeaderIconButtonProps {
   onPress: () => void;
   children: React.ReactNode;
-}> = ({ onPress, children }) => (
-  <TouchableOpacity style={styles.iconBtn} onPress={onPress} activeOpacity={0.7}>
+  accessibilityLabel?: string;
+}
+
+export const HeaderIconButton: React.FC<HeaderIconButtonProps> = ({
+  onPress,
+  children,
+  accessibilityLabel,
+}) => (
+  <TouchableOpacity
+    style={styles.iconBtn}
+    onPress={onPress}
+    activeOpacity={0.65}
+    accessibilityLabel={accessibilityLabel}
+    accessibilityRole="button"
+  >
     {children}
   </TouchableOpacity>
 );
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -95,20 +149,18 @@ const styles = StyleSheet.create({
   },
   glass: {
     backgroundColor: colors.bg.overlay,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
   },
-  transparent: {
-    backgroundColor: colors.transparent,
+  solid: {
+    backgroundColor: colors.bg.elevated,
   },
   row: {
     height: HEADER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.base,
+    paddingHorizontal: spacing[4],
   },
   side: {
-    width: 60,
+    width: 56,
     alignItems: 'flex-start',
   },
   sideRight: {
@@ -123,13 +175,17 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
   subtitle: {
-    ...typography.caption,
+    ...typography.captionSm,
     color: colors.text.tertiary,
     marginTop: 1,
   },
   actionWrap: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border.hairline,
   },
   iconBtn: {
     width: 36,
@@ -140,10 +196,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border.light,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border.subtle,
   },
 });
 

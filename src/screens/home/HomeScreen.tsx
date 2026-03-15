@@ -1,4 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+/**
+ * HomeScreen
+ *
+ * Layout:
+ *   1. Animated greeting header + live trust score
+ *   2. WalletSummarySection — DID hero card
+ *   3. QuickActionsSection  — 2×2 action grid
+ *   4. RecentVerificationsSection — horizontal credential scroll
+ *   5. TrustHighlightsSection — trust network alerts
+ */
+
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Platform,
@@ -7,74 +18,140 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
-import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
-import { AppSectionTitle } from '../../components/common/AppSectionTitle';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
-import { WalletSummarySection } from './sections/WalletSummarySection';
-import { QuickActionsSection } from './sections/Quickactionssection ';
+import { colors }             from '../../theme/colors';
+import { radius }             from '../../theme/radius';
+import { AppSectionTitle }    from '../../components/common/AppSectionTitle';
+import { LoadingState }       from '../../components/common/LoadingState';
+import { EmptyState }         from '../../components/common/EmptyState';
+import { useCredentialStore } from '../../hooks/useCredentialStore';
+import { MOCK_IDENTITY }      from '../../constants/mockData';
+import { ROUTES, type RootStackParamList, type TabParamList } from '../../app/routes';
+import type { CredentialWithIssuer } from '../../models/credential';
+
+import { WalletSummarySection }       from './sections/WalletSummarySection';
+import { QuickActionsSection }        from './sections/QuickActionsSection';
 import { RecentVerificationsSection } from './sections/RecentVerificationsSection';
-import { TrustHighlightsSection } from './sections/TrustHighlightsSection';
+import { TrustHighlightsSection, type TrustHighlight } from './sections/TrustHighlightsSection';
 
-// Height reserved for the floating tab bar
-const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 112 : 96;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const t = (require('../../theme/typography').typography) as Record<string, any>;
+const typo = {
+  title1:  t.title1   ?? {},
+  title2:  t.title2   ?? {},
+  caption: t.captionSm ?? t.caption ?? {},
+};
+
+type Nav = BottomTabNavigationProp<TabParamList>;
+
+const TAB_CLEARANCE = Platform.OS === 'ios' ? 110 : 96;
+
+// ─── Mock highlights ──────────────────────────────────────────────────────────
+
+const MOCK_HIGHLIGHTS: TrustHighlight[] = [
+  {
+    id:         'h1',
+    title:      'IIT Bombay Degree Verified',
+    detail:     'Education credential passed all cryptographic checks.',
+    trustState: 'verified',
+    timestamp:  new Date(Date.now() - 7_200_000).toISOString(),
+    icon:       '🎓',
+  },
+  {
+    id:         'h2',
+    title:      'Suspicious Post Detected',
+    detail:     'A post from an unverified source has high fraud signals.',
+    trustState: 'suspicious',
+    timestamp:  new Date(Date.now() - 14_400_000).toISOString(),
+    icon:       '⚠',
+  },
+  {
+    id:         'h3',
+    title:      'AWS Cert Expiring Soon',
+    detail:     'Your AWS Solutions Architect cert expires in 28 days.',
+    trustState: 'pending',
+    timestamp:  new Date(Date.now() - 86_400_000).toISOString(),
+    icon:       '☁️',
+  },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export const HomeScreen: React.FC = () => {
-  const [refreshing, setRefreshing] = React.useState(false);
-  const headerOpacity = useRef(new Animated.Value(0)).current;
-  const contentEntry = useRef(new Animated.Value(0)).current;
+  const nav = useNavigation<Nav>();
+  const {
+    credentials, isLoading, error,
+    trustScore, verifiedCount, refresh,
+  } = useCredentialStore();
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const headerAnim   = useRef(new Animated.Value(0)).current;
+  const sectionsAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(headerOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(contentEntry, {
-        toValue: 1,
-        duration: 700,
-        delay: 100,
-        useNativeDriver: true,
-      }),
+    Animated.stagger(150, [
+      Animated.timing(headerAnim,   { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(sectionsAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
     ]).start();
-  }, [headerOpacity, contentEntry]);
+  }, [headerAnim, sectionsAnim]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Simulate refresh — replace with real data fetch
-    setTimeout(() => setRefreshing(false), 1200);
-  };
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
+
+  const identity = { ...MOCK_IDENTITY, trustScore, credentialCount: credentials.length };
+
+  const scoreColor =
+    trustScore >= 80 ? colors.trust.verified.solid   :
+    trustScore >= 50 ? colors.trust.suspicious.solid :
+    colors.trust.revoked.solid;
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg.base} />
 
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>Good morning</Text>
-            <Text style={styles.appName}>Sovereign Trust</Text>
-          </View>
-          <View style={styles.notifBtn}>
-            <Text style={styles.notifIcon}>◎</Text>
-          </View>
+      {/* ── Animated greeting header ─────────────────────────────────────── */}
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            opacity:   headerAnim,
+            transform: [{
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1], outputRange: [-10, 0],
+              }),
+            }],
+          },
+        ]}
+      >
+        <View>
+          <Text style={styles.greeting}>Good morning ☀</Text>
+          <Text style={styles.pageTitle}>Sovereign Trust</Text>
         </View>
-        <View style={styles.headerDivider} />
+
+        {/* Live trust score pill */}
+        <TouchableOpacity
+          style={[styles.scorePill, { borderColor: `${scoreColor}50` }]}
+          onPress={() => nav.navigate(ROUTES.PASSPORT)}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.scoreNum, { color: scoreColor }]}>{trustScore}</Text>
+          <Text style={styles.scoreLabel}>Trust</Text>
+        </TouchableOpacity>
       </Animated.View>
 
-      {/* ── Scrollable body ─────────────────────────────────────── */}
-      <Animated.ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: TAB_BAR_CLEARANCE },
-        ]}
+      {/* ── Main scroll ──────────────────────────────────────────────────── */}
+      <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: TAB_CLEARANCE }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -84,169 +161,109 @@ export const HomeScreen: React.FC = () => {
           />
         }
       >
-        {/* Wallet Summary */}
-        <Animated.View
-          style={{
-            opacity: contentEntry,
-            transform: [
-              {
-                translateY: contentEntry.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0],
-                }),
-              },
-            ],
-          }}
-        >
-          <WalletSummarySection 
-            identity={{
-              did: 'did:example:user123',
-              alias: 'My Identity',
-              hardwareKey: {
-                fingerprint: 'A3:4F:9C',
-                keyId: 'key123',
-                algorithm: 'EC P-256',
-                attestationType: 'SecureEnclave',
-                createdAt: new Date().toISOString(),
-                lastUsedAt: new Date().toISOString(),
-                isHardwareBacked: true,
-              },
-              status: 'active',
-              trustScore: 85,
-              credentialCount: 5,
-              issuerCount: 3,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }}
-            trustScore={85}
-            onViewAll={() => {}}
+        <Animated.View style={{ opacity: sectionsAnim }}>
+
+          {/* Wallet summary */}
+          <WalletSummarySection
+            identity={identity}
+            trustScore={trustScore}
+            onViewAll={() => nav.navigate(ROUTES.PASSPORT)}
           />
+
+          {/* Quick actions */}
+          <View style={styles.section}>
+            <AppSectionTitle title="Quick Actions" spacing="normal" />
+            <QuickActionsSection
+              onScan={()     => nav.navigate(ROUTES.SCAN)}
+              onVerify={()   => nav.navigate(ROUTES.VERIFY)}
+              onPassport={() => nav.navigate(ROUTES.PASSPORT)}
+              onProduct={()  => nav.navigate(ROUTES.VERIFY)}
+            />
+          </View>
+
+          {/* Recent credentials */}
+          <View style={styles.section}>
+            <AppSectionTitle
+              title="Recent Credentials"
+              count={credentials.length}
+              actionLabel="View all"
+              onAction={() => (nav as any).navigate(ROUTES.CREDENTIAL_LIST)}
+              spacing="normal"
+            />
+            {isLoading ? (
+              <LoadingState message="Loading…" />
+            ) : credentials.length === 0 ? (
+              <EmptyState
+                icon="◈"
+                title="No credentials"
+                description="Scan a credential QR to get started."
+                glowState="primary"
+              />
+            ) : (
+              <RecentVerificationsSection
+                credentials={credentials.slice(0, 6)}
+                onPress={() => (nav as any).navigate(ROUTES.CREDENTIAL_LIST)}
+              />
+            )}
+          </View>
+
+          {/* Trust highlights */}
+          <View style={styles.section}>
+            <AppSectionTitle title="Trust Highlights" spacing="normal" />
+            <TrustHighlightsSection highlights={MOCK_HIGHLIGHTS} />
+          </View>
+
         </Animated.View>
-
-        {/* Quick Actions */}
-        <Section delay={150} entryAnim={contentEntry}>
-          <AppSectionTitle title="Quick Actions" style={styles.sectionTitle} />
-          <QuickActionsSection />
-        </Section>
-
-        {/* Recent Verifications */}
-        <Section delay={250} entryAnim={contentEntry}>
-          <AppSectionTitle
-            title="Recent Verifications"
-            actionLabel="See all"
-            onAction={() => {}}
-            style={styles.sectionTitle}
-          />
-          <RecentVerificationsSection />
-        </Section>
-
-        {/* Trust Highlights */}
-        <Section delay={350} entryAnim={contentEntry}>
-          <AppSectionTitle
-            title="Trust Highlights"
-            actionLabel="View feed"
-            onAction={() => {}}
-            style={styles.sectionTitle}
-          />
-          <TrustHighlightsSection />
-        </Section>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 };
 
-// Staggered entry wrapper
-const Section: React.FC<{
-  children: React.ReactNode;
-  delay: number;
-  entryAnim: Animated.Value;
-}> = ({ children, delay, entryAnim }) => {
-  const localAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(localAnim, {
-      toValue: 1,
-      duration: 500,
-      delay,
-      useNativeDriver: true,
-    }).start();
-  }, [localAnim, delay]);
-
-  return (
-    <Animated.View
-      style={{
-        opacity: localAnim,
-        transform: [
-          {
-            translateY: localAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [12, 0],
-            }),
-          },
-        ],
-        marginBottom: spacing.xl,
-      }}
-    >
-      {children}
-    </Animated.View>
-  );
-};
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
+    flex:            1,
     backgroundColor: colors.bg.base,
+    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: spacing.base,
-    backgroundColor: colors.bg.base,
-    zIndex: 10,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: spacing.base,
+    flexDirection:     'row',
+    justifyContent:    'space-between',
+    alignItems:        'center',
+    paddingHorizontal: 16,
+    marginBottom:      16,
   },
   greeting: {
-    ...typography.caption,
-    color: colors.text.tertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    ...typo.caption,
+    color:         colors.text.quaternary,
+    letterSpacing: 0.4,
   },
-  appName: {
-    ...typography.title1,
-    color: colors.text.primary,
-    marginTop: 2,
+  pageTitle: {
+    ...typo.title1,
+    color:     colors.text.primary,
+    marginTop: 3,
   },
-  notifBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.glass.medium,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-    alignItems: 'center',
-    justifyContent: 'center',
+  scorePill: {
+    alignItems:        'center',
+    backgroundColor:   colors.glass.medium,
+    borderRadius:      radius['2xl'],
+    borderWidth:       1,
+    paddingHorizontal: 14,
+    paddingVertical:   8,
   },
-  notifIcon: {
-    fontSize: 18,
-    color: colors.text.secondary,
+  scoreNum: {
+    ...typo.title2,
+    lineHeight: 26,
+    fontWeight: '700',
   },
-  headerDivider: {
-    height: 1,
-    backgroundColor: colors.border.subtle,
+  scoreLabel: {
+    ...typo.caption,
+    color:     colors.text.quaternary,
+    marginTop: 1,
   },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: spacing.xl,
-  },
-  sectionTitle: {
-    marginBottom: spacing.md,
-  },
+  content:  { gap: 0 },
+  section:  { marginTop: 20 },
 });
 
 export default HomeScreen;

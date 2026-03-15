@@ -33,13 +33,10 @@ export const useAppInit = (): AppInitState => {
 
     const init = async () => {
       try {
-        // 1. Open DB — creates the file if it doesn't exist
+        // 1. Open DB — creates the file if it doesn't exist and runs migrations
         const db = await getDb();
 
-        // 2. Migrate
-        await runMigrations(db);
-
-        // 3. Seed dev data (idempotent — skips if data exists)
+        // 2. Seed dev data (idempotent — skips if data exists)
         await seedDatabase();
 
         // 4. Warm issuer cache (fast in-memory load)

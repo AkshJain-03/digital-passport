@@ -107,7 +107,7 @@ const dotStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems:    'center',
     gap:           7,
-    marginBottom:  spacing.xs,
+    marginBottom:  spacing[3],
   },
   dot: {
     width:        8,
@@ -289,7 +289,7 @@ const beamStyles = StyleSheet.create({
     borderWidth:  1.5,
     borderColor:  colors.brand.primary,
     overflow:     'hidden',
-    marginBottom: spacing.sm,
+    marginBottom: spacing[6],
     alignSelf:    'center',
     backgroundColor: colors.brand.primaryDim,
   },
@@ -358,11 +358,11 @@ const styles = StyleSheet.create({
   container: {
     alignItems:      'center',
     justifyContent:  'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing[12],
+    paddingHorizontal: spacing[6],
   },
   message: {
-    ...typography.bodySmall,
+    ...typography.bodySm,
     color:     colors.text.tertiary,
     textAlign: 'center',
   },

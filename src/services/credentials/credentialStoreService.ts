@@ -9,7 +9,29 @@ import { credentialRepository }        from '../../database/repositories/credent
 import { issuerRepository }            from '../../database/repositories/issuerRepository';
 import { MOCK_CREDENTIALS }            from '../../constants/mockData';
 import { ISSUER_DIRECTORY }            from '../../constants/issuerDirectory';
-import type { Credential, CredentialWithIssuer } from '../../models/credential';
+import type { Credential, CredentialWithIssuer, Issuer } from '../../models/credential';
+
+const resolveIssuer = (credential: Credential, issuerMap: Map<string, Issuer>): Issuer => {
+  const fromDb = issuerMap.get(credential.issuerId);
+  if (fromDb) return fromDb;
+
+  const fromDirectory = ISSUER_DIRECTORY.find(i => i.id === credential.issuerId);
+  if (fromDirectory) return fromDirectory;
+
+  console.warn(`[CredentialStore] Missing issuer for credential ${credential.id} (issuerId=${credential.issuerId})`);
+  return {
+    id: credential.issuerId,
+    did: credential.issuerDid,
+    name: 'Unknown Issuer',
+    shortName: 'Unknown',
+    logoEmoji: '❔',
+    category: 'Unknown',
+    country: 'N/A',
+    isVerified: false,
+    trustState: 'suspicious',
+    addedAt: new Date(0).toISOString(),
+  };
+};
 
 export const credentialStoreService = {
 
@@ -31,7 +53,7 @@ export const credentialStoreService = {
 
     return creds.map(c => ({
       ...c,
-      issuer: issuerMap.get(c.issuerId) ?? ISSUER_DIRECTORY.find(i => i.id === c.issuerId)!,
+      issuer: resolveIssuer(c, issuerMap),
     }));
   },
 

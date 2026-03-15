@@ -184,15 +184,15 @@ const styles = StyleSheet.create({
   container: {
     alignItems:      'center',
     justifyContent:  'center',
-    paddingVertical: spacing.base,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing[16],
+    paddingHorizontal: spacing[8],
   },
   ringWrap: {
     width:           HALO_SIZE,
     height:          HALO_SIZE,
     alignItems:      'center',
     justifyContent:  'center',
-    marginBottom:    spacing.sm,
+    marginBottom:    spacing[6],
   },
   halo: {
     position:    'absolute',
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     ...typography.title3,
     color:      colors.text.primary,
     textAlign:  'center',
-    marginBottom: spacing.xxs,
+    marginBottom: spacing[2],
   },
   description: {
     ...typography.body,
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   cta: {
-    marginTop: spacing.sm,
+    marginTop: spacing[6],
   },
 });
 

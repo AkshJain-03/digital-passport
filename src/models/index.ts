@@ -11,6 +11,5 @@ export type {
   VerificationOutcome,
   VerificationRequest,
   VerificationSubjectType,
-  VerificationStep,
   VerificationStepStatus,
 }                        from './verification';
