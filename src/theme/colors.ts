@@ -16,11 +16,11 @@
 // ─── Raw palette ──────────────────────────────────────────────────────────────
 
 const RAW = {
-  space0:      '#020810',
-  space1:      '#060E1C',
-  space2:      '#0A1628',
-  space3:      '#0F1F3D',
-  space4:      '#152849',
+  space0:      '#030610',
+  space1:      '#06080F',
+  space2:      '#0F1320',
+  space3:      '#151A2E',
+  space4:      '#1C2440',
 
   emerald:     '#00FF88',
   emeraldMid:  '#00CC6E',
@@ -149,6 +149,11 @@ export interface ColorThemeShape {
     shimmer: string[];
     trust: Record<TrustState, string[]>;
   };
+  accent: {
+    electricCyan: string;
+    neonViolet:   string;
+    liquidMint:   string;
+  };
   raw: typeof RAW;
   transparent: 'transparent';
   white: string;
@@ -159,21 +164,21 @@ export interface ColorThemeShape {
 
 export const darkTheme: ColorThemeShape = {
   bg: {
-    base:     RAW.space1,
-    deep:     RAW.space0,
-    surface:  RAW.space2,
-    elevated: RAW.space3,
-    float:    RAW.space4,
-    overlay:  'rgba(6,14,28,0.94)',
-    scrim:    'rgba(2,8,16,0.85)',
+    base:     '#05070D',
+    deep:     '#05070D',
+    surface:  '#0B0F1A',
+    elevated: '#121826',
+    float:    '#182238',
+    overlay:  'rgba(5,7,13,0.94)',
+    scrim:    'rgba(4,8,16,0.84)',
   },
   glass: {
-    ultra:   'rgba(255,255,255,0.02)',
-    subtle:  'rgba(255,255,255,0.04)',
-    light:   'rgba(255,255,255,0.06)',
-    medium:  'rgba(255,255,255,0.09)',
-    heavy:   'rgba(255,255,255,0.13)',
-    opaque:  'rgba(255,255,255,0.18)',
+    ultra:   'rgba(255,255,255,0.03)',
+    subtle:  'rgba(255,255,255,0.06)',
+    light:   'rgba(255,255,255,0.10)',
+    medium:  'rgba(255,255,255,0.14)',
+    heavy:   'rgba(255,255,255,0.20)',
+    opaque:  'rgba(255,255,255,0.26)',
   },
   border: {
     hairline: 'rgba(255,255,255,0.05)',
@@ -216,7 +221,7 @@ export const darkTheme: ColorThemeShape = {
     info:        RAW.sapphire,   infoDim:    'rgba(10,132,255,0.10)',
   },
   gradient: {
-    bgMesh:    [RAW.space1, RAW.space0],
+    bgMesh:    ['#05070D', '#0B0F1A', '#121826'],
     cyanSweep: ['rgba(0,212,255,0.0)', 'rgba(0,212,255,0.12)', 'rgba(0,212,255,0.0)'],
     shimmer:   ['rgba(255,255,255,0.0)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.0)'],
     trust: {
@@ -227,6 +232,11 @@ export const darkTheme: ColorThemeShape = {
       pending:    ['rgba(255,214,10,0.20)', 'rgba(255,214,10,0.0)'],
       unknown:    ['rgba(142,142,147,0.12)','rgba(142,142,147,0.0)'],
     },
+  },
+  accent: {
+    electricCyan: '#00F0FF',
+    neonViolet:   '#B24BF3',
+    liquidMint:   '#00FFC8',
   },
   raw: RAW,
   transparent: 'transparent',
@@ -306,6 +316,11 @@ export const lightTheme: ColorThemeShape = {
       pending:    ['rgba(224,188,0,0.12)',  'rgba(224,188,0,0.0)'],
       unknown:    ['rgba(106,106,112,0.08)','rgba(106,106,112,0.0)'],
     },
+  },
+  accent: {
+    electricCyan: '#00D4E0',
+    neonViolet:   '#9B5DE5',
+    liquidMint:   '#00D4A8',
   },
   raw: RAW,
   transparent: 'transparent',

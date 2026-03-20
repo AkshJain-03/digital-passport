@@ -31,6 +31,7 @@ import { colors }    from '../../theme/colors';
 import { radius }    from '../../theme/radius';
 import { GlassCard } from '../../components/common/GlassCard';
 import { AppBadge }  from '../../components/common/AppBadge';
+import { LiquidBackButton } from '../../components/common/LiquidBackButton';
 
 import { TrustConceptCard }    from './components/TrustConceptCard';
 import { TrustGraphCard }      from './components/TrustGraphCard';
@@ -99,10 +100,7 @@ export const TrustEngineScreen: React.FC = () => {
 
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <Animated.View style={[styles.topBar, { opacity: headerAnim }]}>
-        <TouchableOpacity onPress={() => nav.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <Text style={styles.backArrow}>←</Text>
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
+        <LiquidBackButton onPress={() => nav.goBack()} />
         <AppBadge label="Trust Engine" variant="trusted" size="md" />
         <View style={{ width: 60 }} />
       </Animated.View>
@@ -231,8 +229,8 @@ export const TrustEngineScreen: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex:            1,
-    backgroundColor: colors.bg.base,
-    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+    backgroundColor: 'transparent',
+    paddingTop:      Platform.OS === 'ios' ? 66 : 46,
   },
 
   // Top bar
@@ -240,14 +238,10 @@ const styles = StyleSheet.create({
     flexDirection:     'row',
     alignItems:        'center',
     justifyContent:    'space-between',
-    paddingHorizontal: 16,
-    marginBottom:      8,
+    paddingHorizontal: 20,
+    marginBottom:      12,
   },
-  backBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  backArrow:{ ...typo.body, color: colors.brand.primary, fontSize: 18 },
-  backText: { ...typo.body, color: colors.brand.primary },
-
-  scroll: { paddingHorizontal: 16 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 128 },
 
   // Hero
   hero: {

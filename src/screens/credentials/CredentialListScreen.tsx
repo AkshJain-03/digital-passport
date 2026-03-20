@@ -37,7 +37,7 @@ import { CredentialQRSheet }          from './components/CredentialQRSheet';
 import { CredentialDetailSheet }      from './components/CredentialDetailSheet';
 import type { CredentialFilter }      from './components/CredentialFilterBar';
 
-const TAB_CLEARANCE = Platform.OS === 'ios' ? 110 : 96;
+const TAB_CLEARANCE = Platform.OS === 'ios' ? 128 : 112;
 
 export const CredentialListScreen: React.FC = () => {
   const {
@@ -230,23 +230,23 @@ const StaggeredCard: React.FC<{
 const styles = StyleSheet.create({
   root: {
     flex:            1,
-    backgroundColor: colors.bg.base,
-    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+    backgroundColor: 'transparent',
+    paddingTop:      Platform.OS === 'ios' ? 66 : 46,
   },
   header: {
-    paddingHorizontal: spacing[4],
-    marginBottom:      spacing[3],
+    paddingHorizontal: spacing[5],
+    marginBottom:      spacing[5],
   },
-  pageTitle: { ...typography.title2, color: colors.text.primary },
+  pageTitle: { ...typography.title1, color: colors.text.primary },
   pageSub:   { ...typography.captionSm, color: colors.text.tertiary, marginTop: 3 },
   list: {
-    paddingHorizontal: spacing[4],
-    paddingTop:        spacing[3],
-    gap:               spacing[3],
+    paddingHorizontal: spacing[5],
+    paddingTop:        spacing[4],
+    gap:               spacing[4],
   },
   listTitle: {
     paddingHorizontal: 0,
-    marginBottom:      spacing[1],
+    marginBottom:      spacing[2],
   },
 });
 

@@ -1,9 +1,9 @@
 /**
- * Sovereign Trust — Shadow System
+ * Sovereign Trust — Liquid Glass Shadow System
  *
- * iOS uses native shadows; Android uses elevation.
- * Glow shadows use trust-state hues with zero offset
- * to produce omnidirectional neon bloom.
+ * Deep neon bloom shadows for the liquid glass material system.
+ * iOS: native shadows at zero offset = omnidirectional neon glow.
+ * Android: elevation fallback.
  */
 
 import { Platform, type ViewStyle } from 'react-native';
@@ -32,34 +32,33 @@ const iosGlow = (color: string, radius: number, opacity: number): ShadowStyle =>
     ? { shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: opacity, shadowRadius: radius }
     : { elevation: Math.max(2, Math.round(radius / 4)) };
 
-// ─── Depth shadows ────────────────────────────────────────────────────────────
+// ─── Depth shadows — deeper than before for space depth ──────────────────────
 
 export const shadows = {
-  // Standard depth
-  xs:  iosShadow('#000000', 1,  4,  0.20),
-  sm:  iosShadow('#000000', 2,  8,  0.28),
-  md:  iosShadow('#000000', 4,  16, 0.36),
-  lg:  iosShadow('#000000', 8,  24, 0.42),
-  xl:  iosShadow('#000000', 12, 36, 0.48),
-  '2xl': iosShadow('#000000', 20, 48, 0.55),
+  xs:    iosShadow('#000000', 1,  6,  0.40),
+  sm:    iosShadow('#000000', 2,  12, 0.52),
+  md:    iosShadow('#000000', 4,  22, 0.60),
+  lg:    iosShadow('#000000', 8,  36, 0.68),
+  xl:    iosShadow('#000000', 12, 52, 0.74),
+  '2xl': iosShadow('#000000', 20, 70, 0.82),
 
-  // ── Trust glow (neon bloom) ───────────────────────────────────────────────
-  glowVerified:   iosGlow('#00FF88', 20, 0.45),
-  glowTrusted:    iosGlow('#0A84FF', 20, 0.45),
-  glowSuspicious: iosGlow('#FF8C00', 20, 0.45),
-  glowRevoked:    iosGlow('#FF3355', 20, 0.45),
-  glowPending:    iosGlow('#FFD60A', 22, 0.40),
-  glowUnknown:    iosGlow('#8E8E93', 14, 0.25),
+  // ── Trust glow — vivid neon bloom ────────────────────────────────────────
+  glowVerified:   iosGlow('#00FF88', 28, 0.60),
+  glowTrusted:    iosGlow('#0A84FF', 28, 0.60),
+  glowSuspicious: iosGlow('#FF8C00', 28, 0.60),
+  glowRevoked:    iosGlow('#FF3355', 28, 0.60),
+  glowPending:    iosGlow('#FFD60A', 32, 0.55),
+  glowUnknown:    iosGlow('#8E8E93', 18, 0.30),
 
-  // ── Brand glow ────────────────────────────────────────────────────────────
-  glowPrimary:    iosGlow('#00D4FF', 18, 0.40),
-  glowViolet:     iosGlow('#7B61FF', 18, 0.40),
+  // ── Brand glow — electric cyan + neon purple ──────────────────────────────
+  glowPrimary: iosGlow('#00E5FF', 36, 0.58),
+  glowViolet:  iosGlow('#7C3AED', 36, 0.58),
 
-  // ── Subtle card lift (depth + slight glow) ────────────────────────────────
-  card: iosShadow('#000000', 4, 20, 0.32),
+  // ── Liquid glass card shadow — deep with cyan tint ────────────────────────
+  card: iosShadow('#00E5FF', 8, 28, 0.18),
 } as const;
 
-// ─── Trust → shadow map ───────────────────────────────────────────────────────
+// ─── Trust → glow map ────────────────────────────────────────────────────────
 
 import type { GlowState } from './colors';
 

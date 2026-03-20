@@ -1,11 +1,18 @@
 /**
  * WalletSummarySection
  *
- * Hero card on the Home screen — DID, trust score, credential count.
+ * Premium hero card on the Home screen — DID, trust score, credential count.
+ * Uses the liquid GlassCard component with enhanced stat boxes.
  */
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { GlassCard }       from '../../../components/common/GlassCard';
 import { AppBadge }        from '../../../components/common/AppBadge';
 import { colors }          from '../../../theme/colors';
@@ -40,10 +47,10 @@ export const WalletSummarySection: React.FC<WalletSummarySectionProps> = ({
     colors.trust.suspicious.solid;
 
   return (
-    <GlassCard glowState="trusted" animateGlow padding="md" style={styles.card}>
+    <GlassCard glowState="trusted" animateGlow padding="lg" style={styles.card}>
       {/* Top row: greeting + status badge */}
       <View style={styles.topRow}>
-        <View>
+        <View style={styles.topLeft}>
           <Text style={styles.greeting}>Welcome back</Text>
           <Text style={styles.alias}>{identity.alias}</Text>
         </View>
@@ -58,11 +65,23 @@ export const WalletSummarySection: React.FC<WalletSummarySectionProps> = ({
       <Text style={styles.didLabel}>DID</Text>
       <Text style={styles.did}>{abbreviateDid(identity.did)}</Text>
 
-      {/* Stats row */}
+      {/* Stats row — glass stat boxes */}
       <View style={styles.statsRow}>
-        <StatBox value={trustScore}            label={trustScoreLabel(trustScore)} color={scoreColor}                suffix="" />
-        <StatBox value={identity.credentialCount} label="Credentials"              color={colors.brand.primary}     />
-        <StatBox value={identity.issuerCount}     label="Issuers"                  color={colors.trust.trusted.solid} />
+        <StatBox
+          value={trustScore}
+          label={trustScoreLabel(trustScore)}
+          color={scoreColor}
+        />
+        <StatBox
+          value={identity.credentialCount}
+          label="Credentials"
+          color={colors.brand.primary}
+        />
+        <StatBox
+          value={identity.issuerCount}
+          label="Issuers"
+          color={colors.trust.trusted.solid}
+        />
       </View>
 
       {/* CTA */}
@@ -79,10 +98,9 @@ const StatBox: React.FC<{
   value:   number;
   label:   string;
   color:   string;
-  suffix?: string;
-}> = ({ value, label, color, suffix = '' }) => (
+}> = ({ value, label, color }) => (
   <View style={styles.statBox}>
-    <Text style={[styles.statValue, { color }]}>{value}{suffix}</Text>
+    <Text style={[styles.statValue, { color }]}>{value}</Text>
     <Text style={styles.statLabel}>{label}</Text>
   </View>
 );
@@ -90,16 +108,69 @@ const StatBox: React.FC<{
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  card:    { marginHorizontal: 16 },
-  topRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  greeting:{ ...typo.caption, color: colors.text.quaternary },
-  alias:   { ...typo.title3,  color: colors.text.primary, marginTop: 2 },
-  didLabel:{ ...typo.label,   color: colors.text.quaternary, marginBottom: 3 },
-  did:     { ...typo.mono,    color: colors.text.tertiary, marginBottom: 16 },
-  statsRow:{ flexDirection: 'row', gap: 12, marginBottom: 12 },
-  statBox: { flex: 1, alignItems: 'center' },
-  statValue:{ ...typo.title2, lineHeight: 28 },
-  statLabel:{ ...typo.label,  color: colors.text.quaternary },
-  viewAllBtn:  { alignSelf: 'flex-end' },
-  viewAllText: { ...typo.button, color: colors.brand.primary },
+  card: {
+    marginHorizontal: 16,
+  },
+  topRow: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'flex-start',
+    marginBottom:   14,
+  },
+  topLeft: {
+    flex: 1,
+  },
+  greeting: {
+    ...typo.caption,
+    color:         colors.text.quaternary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  alias: {
+    ...typo.title3,
+    color:     colors.text.primary,
+    marginTop: 3,
+  },
+  didLabel: {
+    ...typo.label,
+    color:         colors.text.quaternary,
+    marginBottom:  4,
+    letterSpacing: 0.8,
+  },
+  did: {
+    ...typo.mono,
+    color:     colors.text.tertiary,
+    marginBottom: 18,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap:           10,
+    marginBottom:  14,
+  },
+  statBox: {
+    flex:            1,
+    alignItems:      'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius:    radius.xl,
+    borderWidth:     1,
+    borderColor:     colors.border.subtle,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+  },
+  statValue: {
+    ...typo.title2,
+    lineHeight: 28,
+  },
+  statLabel: {
+    ...typo.label,
+    color:     colors.text.quaternary,
+    marginTop: 2,
+  },
+  viewAllBtn: {
+    alignSelf: 'flex-end',
+  },
+  viewAllText: {
+    ...typo.button,
+    color: colors.brand.primary,
+  },
 });

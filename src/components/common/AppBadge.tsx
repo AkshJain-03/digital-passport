@@ -1,15 +1,11 @@
 /**
- * AppBadge
+ * AppBadge — Liquid Glass Edition
  *
- * Small pill label expressing trust state, category, or status.
- *
- * Colour is driven by TrustState or 'neutral' / 'primary' variants.
- * Supports an optional leading dot that pulses for 'pending' state.
- *
- * Sizes:
- *   sm  — 9px label, tight padding   (inside dense cards)
- *   md  — 10px label                 (default)
- *   lg  — 12px label, wider padding  (standalone callouts)
+ * Glass pill with:
+ *   • Semi-transparent tinted bg
+ *   • Edge emission line (trust colour)
+ *   • Pulsing dot for pending state
+ *   • Top reflection strip
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -31,44 +27,33 @@ import {
 import { radius }     from '../../theme/radius';
 import { typography } from '../../theme/typography';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export type BadgeVariant = TrustState | 'neutral' | 'primary';
 export type BadgeSize    = 'sm' | 'md' | 'lg';
 
 export interface AppBadgeProps {
-  /** Text shown inside the badge. Defaults to the TrustState label if omitted. */
   label?:   string;
-
-  /** Colour variant */
   variant?: BadgeVariant;
-
-  /** Show leading dot indicator */
   dot?:     boolean;
-
-  /** Size preset */
   size?:    BadgeSize;
-
-  /** Extra container styles */
   style?:   StyleProp<ViewStyle>;
 }
-
-// ─── Badge token resolver ─────────────────────────────────────────────────────
 
 interface BadgeTokens {
   text:   string;
   bg:     string;
   border: string;
   dot:    string;
+  glow:   string;
 }
 
 const resolveTokens = (variant: BadgeVariant): BadgeTokens => {
   if (variant === 'neutral') {
     return {
       text:   colors.text.secondary,
-      bg:     colors.glass.medium,
+      bg:     'rgba(5,9,25,0.60)',
       border: colors.border.light,
       dot:    colors.text.tertiary,
+      glow:   'transparent',
     };
   }
   if (variant === 'primary') {
@@ -77,6 +62,7 @@ const resolveTokens = (variant: BadgeVariant): BadgeTokens => {
       bg:     colors.brand.primaryDim,
       border: colors.brand.primary,
       dot:    colors.brand.primary,
+      glow:   colors.brand.primaryGlow,
     };
   }
   const t = TRUST_COLORS[variant as TrustState];
@@ -85,10 +71,9 @@ const resolveTokens = (variant: BadgeVariant): BadgeTokens => {
     bg:     t.dim,
     border: t.solid,
     dot:    t.solid,
+    glow:   t.glow,
   };
 };
-
-// ─── Size config ──────────────────────────────────────────────────────────────
 
 const SIZE_CONFIG: Record<BadgeSize, { ph: number; pv: number; dotSize: number }> = {
   sm: { ph: 6,  pv: 2, dotSize: 4 },
@@ -102,12 +87,8 @@ const SIZE_TYPOGRAPHY: Record<BadgeSize, object> = {
   lg: { ...typography.labelMd, fontSize: 11 },
 };
 
-// ─── Pulsing dot ──────────────────────────────────────────────────────────────
-
 const PulsingDot: React.FC<{ color: string; size: number; shouldPulse: boolean }> = ({
-  color,
-  size,
-  shouldPulse,
+  color, size, shouldPulse,
 }) => {
   const pulse = useRef(new Animated.Value(1)).current;
 
@@ -115,8 +96,8 @@ const PulsingDot: React.FC<{ color: string; size: number; shouldPulse: boolean }
     if (!shouldPulse) return;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.35, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1.0,  duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.2, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.0, duration: 600, useNativeDriver: true }),
       ]),
     );
     loop.start();
@@ -132,18 +113,20 @@ const PulsingDot: React.FC<{ color: string; size: number; shouldPulse: boolean }
         backgroundColor: color,
         marginRight:  5,
         opacity:      pulse,
+        shadowColor:  color,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius:  4,
       }}
     />
   );
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export const AppBadge: React.FC<AppBadgeProps> = ({
   label,
-  variant = 'neutral',
-  dot     = false,
-  size    = 'md',
+  variant     = 'neutral',
+  dot         = false,
+  size        = 'md',
   style,
 }) => {
   const tokens      = resolveTokens(variant);
@@ -162,16 +145,16 @@ export const AppBadge: React.FC<AppBadgeProps> = ({
           paddingVertical:   sizeConfig.pv,
           backgroundColor:   tokens.bg,
           borderColor:       tokens.border,
+          shadowColor:       tokens.glow,
         },
         style,
       ]}
     >
+      {/* Top reflection */}
+      <View style={styles.topEdge} />
+
       {dot && (
-        <PulsingDot
-          color={tokens.dot}
-          size={sizeConfig.dotSize}
-          shouldPulse={shouldPulse}
-        />
+        <PulsingDot color={tokens.dot} size={sizeConfig.dotSize} shouldPulse={shouldPulse} />
       )}
       <Text style={[textStyle, { color: tokens.text }]}>
         {displayLabel.toUpperCase()}
@@ -180,8 +163,6 @@ export const AppBadge: React.FC<AppBadgeProps> = ({
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   badge: {
     flexDirection:  'row',
@@ -189,6 +170,19 @@ const styles = StyleSheet.create({
     alignSelf:      'flex-start',
     borderRadius:   radius.full,
     borderWidth:    1,
+    overflow:       'hidden',
+    position:       'relative',
+    shadowOffset:   { width: 0, height: 0 },
+    shadowOpacity:  0.40,
+    shadowRadius:   6,
+  },
+  topEdge: {
+    position:        'absolute',
+    top:             0,
+    left:            6,
+    right:           6,
+    height:          1,
+    backgroundColor: 'rgba(255,255,255,0.20)',
   },
 });
 

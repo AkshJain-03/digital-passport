@@ -4,8 +4,8 @@
  * Passwordless DID-auth login flow:
  *   1. Parse challenge QR (auto-loaded in dev via DEMO_QR)
  *   2. Show verifier name, scope chips, nonce preview, expiry
- *   3. User taps "Authenticate" → biometric prompt (explicit gesture)
- *   4. Sign nonce with hardware key → show result
+ *   3. User taps "Authenticate" -> biometric prompt (explicit gesture)
+ *   4. Sign nonce with hardware key -> show result
  *
  * SECURITY: biometric is ONLY triggered by explicit button press.
  * This hook never auto-fires.
@@ -18,7 +18,6 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -52,6 +51,8 @@ const DEMO_QR = JSON.stringify({
   scope:        ['name', 'email', 'employmentCredential'],
 });
 
+const TAB_CLEARANCE = Platform.OS === 'ios' ? 128 : 112;
+
 export const HandshakeScreen: React.FC = () => {
   const { step, handshake, error, parseChallenge, sign, reset } = useHandshakeFlow();
 
@@ -70,16 +71,16 @@ export const HandshakeScreen: React.FC = () => {
       <StatusBar barStyle="light-content" />
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_CLEARANCE }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ────────────────────────────────────────────────────── */}
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Login Request</Text>
           <Text style={styles.sub}>A verifier is requesting access to your credentials</Text>
         </View>
 
-        {/* ── Challenge card ────────────────────────────────────────────── */}
+        {/* Challenge card */}
         {handshake && (
           <GlassCard
             glowState={glowState}
@@ -87,7 +88,6 @@ export const HandshakeScreen: React.FC = () => {
             padding="md"
             style={styles.challengeCard}
           >
-            {/* Verifier identity */}
             <View style={styles.verifierRow}>
               <View style={styles.verifierIcon}>
                 <Text style={styles.verifierEmoji}>🏢</Text>
@@ -101,7 +101,6 @@ export const HandshakeScreen: React.FC = () => {
               <AppBadge label="Login Request" variant="trusted" size="sm" />
             </View>
 
-            {/* Requested scope */}
             {handshake.challenge.scope.length > 0 && (
               <View style={styles.scopeSection}>
                 <Text style={styles.sectionLabel}>REQUESTED ACCESS</Text>
@@ -115,7 +114,6 @@ export const HandshakeScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Expiry + nonce */}
             <View style={styles.metaGrid}>
               <View style={styles.metaRow}>
                 <Text style={styles.metaLabel}>Expires</Text>
@@ -126,25 +124,23 @@ export const HandshakeScreen: React.FC = () => {
               <View style={styles.metaRow}>
                 <Text style={styles.metaLabel}>Nonce</Text>
                 <Text style={styles.metaNonce}>
-                  {handshake.challenge.nonce.slice(0, 14)}…
+                  {handshake.challenge.nonce.slice(0, 14)}...
                 </Text>
               </View>
             </View>
           </GlassCard>
         )}
 
-        {/* ── Signing / loading ─────────────────────────────────────────── */}
         {(step === 'signing' || step === 'awaiting_biometric') && (
           <LoadingState
             message={
               step === 'awaiting_biometric'
-                ? 'Waiting for biometric…'
-                : 'Signing with hardware key…'
+                ? 'Waiting for biometric...'
+                : 'Signing with hardware key...'
             }
           />
         )}
 
-        {/* ── Success ───────────────────────────────────────────────────── */}
         {step === 'completed' && (
           <GlassCard glowState="verified" padding="md" style={styles.resultCard}>
             <Text style={styles.resultIconText}>✓</Text>
@@ -154,13 +150,12 @@ export const HandshakeScreen: React.FC = () => {
             </Text>
             {handshake?.response?.signature && (
               <Text style={styles.resultMono}>
-                Sig: {handshake.response.signature.slice(0, 22)}…
+                Sig: {handshake.response.signature.slice(0, 22)}...
               </Text>
             )}
           </GlassCard>
         )}
 
-        {/* ── Error ─────────────────────────────────────────────────────── */}
         {(step === 'error' || error) && (
           <GlassCard glowState="revoked" padding="md" style={styles.resultCard}>
             <Text style={[styles.resultIconText, { color: colors.trust.revoked.solid }]}>✕</Text>
@@ -171,7 +166,6 @@ export const HandshakeScreen: React.FC = () => {
           </GlassCard>
         )}
 
-        {/* ── CTA — MUST be explicit user tap ───────────────────────────── */}
         <View style={styles.actions}>
           {step === 'challenge_parsed' && (
             <AppButton
@@ -185,31 +179,25 @@ export const HandshakeScreen: React.FC = () => {
             <AppButton label="Done" onPress={reset} variant="secondary" fullWidth />
           )}
         </View>
-
-        <View style={{ height: 80 }} />
       </ScrollView>
     </View>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   root: {
     flex:            1,
-    backgroundColor: colors.bg.base,
-    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+    backgroundColor: 'transparent',
+    paddingTop:      Platform.OS === 'ios' ? 66 : 46,
   },
-  scroll: { paddingHorizontal: 16 },
+  scroll: { paddingHorizontal: 20 },
 
-  header: { marginBottom: 20 },
+  header: { marginBottom: 22 },
   title:  { ...typo.title2, color: colors.text.primary },
   sub:    { ...typo.body,   color: colors.text.tertiary, marginTop: 3 },
 
-  // Challenge card
-  challengeCard: { marginBottom: 16 },
+  challengeCard: { marginBottom: 20 },
 
-  // Verifier row
   verifierRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   verifierIcon: {
     width:           44,
@@ -227,7 +215,6 @@ const styles = StyleSheet.create({
   verifierName:  { ...typo.headline, color: colors.text.primary },
   verifierDid:   { ...typo.mono, fontSize: 9, color: colors.text.quaternary, marginTop: 2 },
 
-  // Scope
   scopeSection: { marginBottom: 12 },
   sectionLabel: { ...typo.label, color: colors.text.quaternary, marginBottom: 8 },
   scopeChips:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -241,15 +228,13 @@ const styles = StyleSheet.create({
   },
   scopeChipText: { ...typo.caption, color: colors.brand.primary, fontWeight: '600' },
 
-  // Meta
   metaGrid: { gap: 6 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   metaLabel: { ...typo.caption, color: colors.text.quaternary },
   metaValue: { ...typo.caption, color: colors.text.secondary },
   metaNonce: { ...typo.mono, fontSize: 10, color: colors.text.tertiary },
 
-  // Result
-  resultCard:   { marginBottom: 16, alignItems: 'center', paddingVertical: 24 },
+  resultCard:   { marginBottom: 20, alignItems: 'center', paddingVertical: 24 },
   resultIconText: {
     fontSize:     36,
     color:        colors.trust.verified.solid,

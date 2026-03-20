@@ -26,6 +26,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { BlurView } from '@react-native-community/blur';
 
 import { colors }     from '../../theme/colors';
 import { radius }     from '../../theme/radius';
@@ -88,6 +89,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           style,
         ]}
       >
+        {/* Glass blur layer for glass variant */}
+        {variant === 'glass' && Platform.OS === 'ios' && (
+          <BlurView
+            style={StyleSheet.absoluteFill}
+            blurType="ultraThinMaterialDark"
+            blurAmount={9}
+            reducedTransparencyFallbackColor="transparent"
+          />
+        )}
+
         <View style={styles.row}>
           {/* Left slot */}
           <View style={styles.side}>
@@ -148,7 +159,10 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   glass: {
-    backgroundColor: colors.bg.overlay,
+    backgroundColor: Platform.OS === 'ios'
+      ? 'rgba(6,8,15,0.28)'
+      : colors.bg.overlay,
+    overflow: 'hidden' as const,
   },
   solid: {
     backgroundColor: colors.bg.elevated,

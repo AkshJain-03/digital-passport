@@ -2,7 +2,7 @@
  * HomeScreen
  *
  * Layout:
- *   1. Animated greeting header + live trust score
+ *   1. Animated greeting header
  *   2. WalletSummarySection — DID hero card
  *   3. QuickActionsSection  — 2×2 action grid
  *   4. RecentVerificationsSection — horizontal credential scroll
@@ -18,14 +18,12 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { colors }             from '../../theme/colors';
-import { radius }             from '../../theme/radius';
 import { AppSectionTitle }    from '../../components/common/AppSectionTitle';
 import { LoadingState }       from '../../components/common/LoadingState';
 import { EmptyState }         from '../../components/common/EmptyState';
@@ -43,7 +41,6 @@ import { TrustHighlightsSection, type TrustHighlight } from './sections/TrustHig
 const t = (require('../../theme/typography').typography) as Record<string, any>;
 const typo = {
   title1:  t.title1   ?? {},
-  title2:  t.title2   ?? {},
   caption: t.captionSm ?? t.caption ?? {},
 };
 
@@ -109,14 +106,9 @@ export const HomeScreen: React.FC = () => {
 
   const identity = { ...MOCK_IDENTITY, trustScore, credentialCount: credentials.length };
 
-  const scoreColor =
-    trustScore >= 80 ? colors.trust.verified.solid   :
-    trustScore >= 50 ? colors.trust.suspicious.solid :
-    colors.trust.revoked.solid;
-
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg.base} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.bg.deep} />
 
       {/* ── Animated greeting header ─────────────────────────────────────── */}
       <Animated.View
@@ -136,16 +128,6 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.greeting}>Good morning ☀</Text>
           <Text style={styles.pageTitle}>Sovereign Trust</Text>
         </View>
-
-        {/* Live trust score pill */}
-        <TouchableOpacity
-          style={[styles.scorePill, { borderColor: `${scoreColor}50` }]}
-          onPress={() => nav.navigate(ROUTES.PASSPORT)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.scoreNum, { color: scoreColor }]}>{trustScore}</Text>
-          <Text style={styles.scoreLabel}>Trust</Text>
-        </TouchableOpacity>
       </Animated.View>
 
       {/* ── Main scroll ──────────────────────────────────────────────────── */}
@@ -224,46 +206,30 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex:            1,
-    backgroundColor: colors.bg.base,
-    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+    backgroundColor: 'transparent',
+    paddingTop:      Platform.OS === 'ios' ? 66 : 46,
   },
   header: {
     flexDirection:     'row',
     justifyContent:    'space-between',
     alignItems:        'center',
-    paddingHorizontal: 16,
-    marginBottom:      16,
+    paddingHorizontal: 20,
+    paddingRight:      60,     // leave space for the absolute settings icon
+    marginBottom:      20,
   },
   greeting: {
     ...typo.caption,
     color:         colors.text.quaternary,
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   pageTitle: {
     ...typo.title1,
     color:     colors.text.primary,
-    marginTop: 3,
-  },
-  scorePill: {
-    alignItems:        'center',
-    backgroundColor:   colors.glass.medium,
-    borderRadius:      radius['2xl'],
-    borderWidth:       1,
-    paddingHorizontal: 14,
-    paddingVertical:   8,
-  },
-  scoreNum: {
-    ...typo.title2,
-    lineHeight: 26,
-    fontWeight: '700',
-  },
-  scoreLabel: {
-    ...typo.caption,
-    color:     colors.text.quaternary,
-    marginTop: 1,
+    marginTop: 4,
   },
   content:  { gap: 0 },
-  section:  { marginTop: 20 },
+  section:  { marginTop: 30 },
 });
 
 export default HomeScreen;

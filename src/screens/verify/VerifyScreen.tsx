@@ -81,6 +81,8 @@ const DEFAULT_INPUT: Record<Tab, string> = {
   did:        'did:sov:7Tq3kTmNpL8vXoAe9fP2Yz',
 };
 
+const TAB_CLEARANCE = Platform.OS === 'ios' ? 128 : 112;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const VerifyScreen: React.FC = () => {
@@ -135,7 +137,7 @@ export const VerifyScreen: React.FC = () => {
       <StatusBar barStyle="light-content" />
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_CLEARANCE }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -284,8 +286,6 @@ export const VerifyScreen: React.FC = () => {
             </GlassCard>
           </Animated.View>
         )}
-
-        <View style={{ height: 120 }} />
       </ScrollView>
     </View>
   );
@@ -310,13 +310,13 @@ const metaRowStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: {
     flex:            1,
-    backgroundColor: colors.bg.base,
-    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+    backgroundColor: 'transparent',
+    paddingTop:      Platform.OS === 'ios' ? 66 : 46,
   },
-  scroll: { paddingHorizontal: 16 },
+  scroll: { paddingHorizontal: 20 },
 
   // Header
-  header: { marginBottom: 16 },
+  header: { marginBottom: 20 },
   title:  { ...typo.title2, color: colors.text.primary },
   sub:    { ...typo.body,   color: colors.text.tertiary, marginTop: 3 },
 
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.glass.medium,
     borderRadius:    radius['2xl'],
     padding:         3,
-    marginBottom:    16,
+    marginBottom:    20,
     gap:             3,
   },
   tab: {
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   tabLabelActive:{ color: colors.text.primary },
 
   // Input
-  inputCard:  { marginBottom: 16 },
+  inputCard:  { marginBottom: 20 },
   inputLabel: { ...typo.label, color: colors.text.quaternary, marginBottom: 8 },
   input: {
     ...typo.body,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   },
 
   // Loading
-  loadingCard: { marginBottom: 16 },
+  loadingCard: { marginBottom: 20 },
   stepRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 },
   stepDot: {
     width: 22, height: 22, borderRadius: radius.full, borderWidth: 1,
@@ -373,13 +373,13 @@ const styles = StyleSheet.create({
   stepLabel: { ...typo.body, color: colors.text.tertiary, fontSize: 13 },
 
   // Error
-  errorCard:  { alignItems: 'center', marginBottom: 16 },
+  errorCard:  { alignItems: 'center', marginBottom: 20 },
   errorIcon:  { fontSize: 24, color: colors.trust.suspicious.solid, marginBottom: 8 },
   errorTitle: { ...typo.title3, color: colors.trust.suspicious.solid, marginBottom: 4 },
   errorBody:  { ...typo.body, color: colors.text.secondary, textAlign: 'center' },
 
   // Result
-  resultCard: { marginBottom: 16 },
+  resultCard: { marginBottom: 20 },
   resultTop: {
     flexDirection:  'row',
     justifyContent: 'space-between',

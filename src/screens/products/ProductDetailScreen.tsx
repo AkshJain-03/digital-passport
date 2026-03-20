@@ -34,6 +34,7 @@ import { AppButton }               from '../../components/common/AppButton';
 import { AppSectionTitle }         from '../../components/common/AppSectionTitle';
 import { LoadingState }            from '../../components/common/LoadingState';
 import { EmptyState }              from '../../components/common/EmptyState';
+import { LiquidBackButton }        from '../../components/common/LiquidBackButton';
 import { useProductVerification }  from '../../hooks/useProductVerification';
 import { fraudSignalService }      from '../../services/ai/fraudSignalService';
 import { formatDate, formatRelative } from '../../utils/formatters';
@@ -72,9 +73,7 @@ export const ProductDetailScreen: React.FC = () => {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => nav.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
+        <LiquidBackButton onPress={() => nav.goBack()} />
         <Text style={styles.title}>Product Detail</Text>
         <View style={{ width: 60 }} />
       </View>
@@ -269,7 +268,7 @@ const metaStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  root:      { flex: 1, backgroundColor: colors.bg.base, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  root:      { flex: 1, backgroundColor: 'transparent', paddingTop: Platform.OS === 'ios' ? 66 : 46 },
   header: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -277,7 +276,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     marginBottom:      spacing[4],
   },
-  backText:    { ...typography.body,     color: colors.brand.primary },
   title:       { ...typography.headline, color: colors.text.primary },
   scroll:      { paddingHorizontal: spacing[4] },
   heroCard:    { marginBottom: spacing[4] },

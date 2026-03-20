@@ -1,7 +1,7 @@
 /**
  * Sovereign Trust — Typography System
  *
- * Uses SF Pro (iOS) and the equivalent system sans-serif (Android).
+ * Uses native system typefaces on each platform.
  * Scale is inspired by Apple HIG with custom tracking for the
  * "intelligent, premium" aesthetic demanded by the product.
  *
@@ -20,16 +20,16 @@ import { Platform } from 'react-native';
 
 const FONT = Platform.select({
   ios: {
-    ultraLight: 'SF Pro Display',
-    thin:       'SF Pro Display',
-    light:      'SF Pro Display',
-    regular:    'SF Pro Text',
-    medium:     'SF Pro Text',
-    semibold:   'SF Pro Display',
-    bold:       'SF Pro Display',
-    heavy:      'SF Pro Display',
-    black:      'SF Pro Display',
-    mono:       'SF Mono',
+    ultraLight: 'System',
+    thin:       'System',
+    light:      'System',
+    regular:    'System',
+    medium:     'System',
+    semibold:   'System',
+    bold:       'System',
+    heavy:      'System',
+    black:      'System',
+    mono:       'Menlo',
   },
   android: {
     ultraLight: 'sans-serif-thin',
@@ -87,22 +87,22 @@ export const typography = {
   displaySm:make(FONT?.heavy,    36, 42, -1.4, '800'),
 
   // ── Titles ────────────────────────────────────────────────────────────────
-  title1:   make(FONT?.bold,     28, 34, -0.8, '700'),
-  title2:   make(FONT?.semibold, 22, 28, -0.5, '600'),
-  title3:   make(FONT?.semibold, 18, 24, -0.3, '600'),
+  title1:   make(FONT?.bold,     28, 36, -0.8, '700'),
+  title2:   make(FONT?.semibold, 22, 30, -0.5, '600'),
+  title3:   make(FONT?.semibold, 18, 25, -0.3, '600'),
 
   // ── Headline ─────────────────────────────────────────────────────────────
-  headline: make(FONT?.semibold, 15, 20,  0.0, '600'),
-  headlineSm: make(FONT?.medium, 14, 19,  0.0, '500'),
+  headline: make(FONT?.semibold, 15, 21,  0.05, '600'),
+  headlineSm: make(FONT?.medium, 14, 20,  0.03, '500'),
 
   // ── Body ──────────────────────────────────────────────────────────────────
-  body:     make(FONT?.regular,  15, 22,  0.0, '400'),
-  bodyMd:   make(FONT?.regular,  14, 20,  0.0, '400'),
-  bodySm:   make(FONT?.regular,  13, 18,  0.0, '400'),
+  body:     make(FONT?.regular,  15, 23,  0.02, '400'),
+  bodyMd:   make(FONT?.regular,  14, 21,  0.02, '400'),
+  bodySm:   make(FONT?.regular,  13, 19,  0.02, '400'),
 
   // ── Caption ───────────────────────────────────────────────────────────────
-  caption:  make(FONT?.regular,  12, 16,  0.2, '400'),
-  captionSm:make(FONT?.regular,  11, 15,  0.3, '400'),
+  caption:  make(FONT?.regular,  12, 17,  0.2, '400'),
+  captionSm:make(FONT?.regular,  11, 16,  0.3, '400'),
 
   // ── Labels — ALL CAPS micro text ─────────────────────────────────────────
   label:    make(FONT?.semibold, 10, 14,  1.2, '600'),
@@ -123,4 +123,16 @@ export const typography = {
   tabLabel: make(FONT?.semibold,  9, 12,  0.3, '600'),
 } as const;
 
+// ── Semantic aliases (Task 6) ─────────────────────────────────────────────────
+
+export const semanticTypography = {
+  headlineLarge:  typography.title1,
+  headlineMedium: typography.title2,
+  title:          typography.title3,
+  body:           typography.body,
+  caption:        typography.caption,
+  mono:           typography.mono,
+} as const;
+
 export type TypographyKey = keyof typeof typography;
+export type SemanticTypographyKey = keyof typeof semanticTypography;

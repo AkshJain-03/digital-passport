@@ -39,7 +39,7 @@ const typo = {
   label:  t.label    ?? {},
 };
 
-const TAB_CLEARANCE = Platform.OS === 'ios' ? 110 : 96;
+const TAB_CLEARANCE = Platform.OS === 'ios' ? 128 : 112;
 
 export const TruthFeedScreen: React.FC = () => {
   const { posts, isLoading, error, filter, setFilter, refresh, verifyPost } = useTruthFeed();
@@ -167,20 +167,20 @@ export const TruthFeedScreen: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex:            1,
-    backgroundColor: colors.bg.base,
-    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+    backgroundColor: 'transparent',
+    paddingTop:      Platform.OS === 'ios' ? 66 : 46,
   },
 
   // Header
   header: {
-    paddingBottom: 12,
+    paddingBottom: 14,
   },
   headerTop: {
     flexDirection:     'row',
     justifyContent:    'space-between',
     alignItems:        'flex-end',
-    paddingHorizontal: 16,
-    marginBottom:      14,
+    paddingHorizontal: 20,
+    marginBottom:      18,
   },
   title:   { ...typo.title2, color: colors.text.primary },
   sub:     { ...typo.body, color: colors.text.tertiary, marginTop: 3 },
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   filterWrap:  {},
 
   // Feed
-  feed:   { paddingHorizontal: 16, paddingTop: 8 },
+  feed:   { paddingHorizontal: 20, paddingTop: 10 },
   feedHeader: {
     flexDirection:  'row',
     justifyContent: 'space-between',

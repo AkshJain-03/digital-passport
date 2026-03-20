@@ -14,12 +14,14 @@ export const ROUTES = {
   TRUTH_FEED:  'TruthFeed',
 
   // ── Stack screens ────────────────────────────────────────────────────────
-  HANDSHAKE:           'Handshake',
-  CREDENTIAL_LIST:     'CredentialList',
-  CREDENTIAL_DETAIL:   'CredentialDetail',
-  PRODUCT_DETAIL:      'ProductDetail',
-  SETTINGS:            'Settings',
-  TRUST_ENGINE:        'TrustEngine',
+  HANDSHAKE:               'Handshake',
+  CREDENTIAL_LIST:         'CredentialList',
+  CREDENTIAL_DETAIL:       'CredentialDetail',
+  PRODUCT_DETAIL:          'ProductDetail',
+  SETTINGS:                'Settings',
+  TRUST_ENGINE:            'TrustEngine',
+  CAMERA_SCAN:             'CameraScan',
+  QR_VERIFICATION_RESULT:  'QRVerificationResult',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
@@ -36,11 +38,13 @@ export type TabParamList = {
 };
 
 export type RootStackParamList = {
-  MainTabs:                    undefined;
-  [ROUTES.HANDSHAKE]:          { rawQR?: string };
-  [ROUTES.CREDENTIAL_LIST]:    undefined;
-  [ROUTES.CREDENTIAL_DETAIL]:  { credentialId: string };
-  [ROUTES.PRODUCT_DETAIL]:     { productId: string };
-  [ROUTES.SETTINGS]:           undefined;
-  [ROUTES.TRUST_ENGINE]:       undefined;
+  MainTabs:                            undefined;
+  [ROUTES.HANDSHAKE]:                  { rawQR?: string };
+  [ROUTES.CREDENTIAL_LIST]:            undefined;
+  [ROUTES.CREDENTIAL_DETAIL]:          { credentialId: string };
+  [ROUTES.PRODUCT_DETAIL]:             { productId: string };
+  [ROUTES.SETTINGS]:                   undefined;
+  [ROUTES.TRUST_ENGINE]:               undefined;
+  [ROUTES.CAMERA_SCAN]:                undefined;
+  [ROUTES.QR_VERIFICATION_RESULT]:     { payload: string };
 };

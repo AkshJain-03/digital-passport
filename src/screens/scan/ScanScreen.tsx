@@ -22,6 +22,8 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors }             from '../../theme/colors';
 import { radius }             from '../../theme/radius';
@@ -35,6 +37,7 @@ import {
 }                             from '../../domain/verification/verificationTypes';
 import type { VerificationResult } from '../../domain/verification/verificationTypes';
 import type { TrustState }         from '../../theme/colors';
+import { ROUTES, type RootStackParamList } from '../../app/routes';
 
 import { ScanOverlay }            from './components/ScanOverlay';
 import { ScanTypeSelector }       from './components/ScanTypeSelector';
@@ -108,10 +111,14 @@ const MOCK_QR: Record<VerificationSubjectType, string> = {
 type Phase = 'idle' | 'scanning' | 'verifying' | 'done' | 'error';
 const STEP_MS = 520;
 const delay   = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+const TAB_CLEARANCE = Platform.OS === 'ios' ? 128 : 112;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
 export const ScanScreen: React.FC = () => {
+  const nav = useNavigation<Nav>();
   const [scanType,     setScanType]     = useState<VerificationSubjectType>('credential');
   const [phase,        setPhase]        = useState<Phase>('idle');
   const [stepStatuses, setStepStatuses] = useState<VerificationStepStatus[]>([]);
@@ -202,7 +209,7 @@ export const ScanScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_CLEARANCE }]}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
@@ -355,10 +362,11 @@ export const ScanScreen: React.FC = () => {
         <View style={styles.actions}>
           {phase === 'idle' && (
             <AppButton
-              label={`Simulate ${meta.label} Scan`}
-              onPress={startScan}
+              label="📷  Scan with Camera"
+              onPress={() => nav.navigate(ROUTES.CAMERA_SCAN)}
               variant="primary"
               fullWidth
+              size="lg"
             />
           )}
           {(phase === 'done' || phase === 'error') && (
@@ -371,7 +379,6 @@ export const ScanScreen: React.FC = () => {
           )}
         </View>
 
-        <View style={{ height: 120 }} />
       </ScrollView>
     </View>
   );
@@ -382,27 +389,27 @@ export const ScanScreen: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex:            1,
-    backgroundColor: colors.bg.base,
-    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+    backgroundColor: 'transparent',
+    paddingTop:      Platform.OS === 'ios' ? 66 : 46,
   },
-  scroll: { paddingHorizontal: 16 },
+  scroll: { paddingHorizontal: 20 },
 
   // Header
-  header:    { marginBottom: 16 },
+  header:    { marginBottom: 20 },
   title:     { ...typo.title2, color: colors.text.primary },
   headerSub: { ...typo.body, color: colors.text.tertiary, marginTop: 4, lineHeight: 20 },
 
   // Selector
-  selectorWrap: { marginBottom: 16 },
+  selectorWrap: { marginBottom: 20 },
 
   // Viewfinder
   viewfinder: {
     height:          310,
     borderRadius:    radius['3xl'],
-    backgroundColor: colors.bg.base,
+    backgroundColor: 'rgba(18,24,38,0.34)',
     alignItems:      'center',
     justifyContent:  'center',
-    marginBottom:    16,
+    marginBottom:    20,
     borderWidth:     1,
     overflow:        'hidden',
   },
@@ -442,7 +449,7 @@ const styles = StyleSheet.create({
   vfPillText: { ...typo.caption, fontWeight: '600' },
 
   // Steps card
-  stepsCard:  { marginBottom: 16 },
+  stepsCard:  { marginBottom: 20 },
   stepsHeader: {
     flexDirection:  'row',
     alignItems:     'center',
@@ -461,7 +468,7 @@ const styles = StyleSheet.create({
   stepsRows:  { gap: 0 },
 
   // Error
-  errorCard: { alignItems: 'center', marginBottom: 16, paddingVertical: 24 },
+  errorCard: { alignItems: 'center', marginBottom: 20, paddingVertical: 24 },
   errorIconWrap: {
     width:           52,
     height:          52,

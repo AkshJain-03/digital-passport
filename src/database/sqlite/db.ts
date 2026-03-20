@@ -24,7 +24,10 @@ let _db: SQLiteDatabase | null = null;
 export const getDb = async (): Promise<SQLiteDatabase> => {
   if (_db) return _db;
 
-  _db = await SQLite.openDatabase(DB_NAME, DB_VERSION, DB_DISPLAY, DB_SIZE);
+  _db = await SQLite.openDatabase({
+    name: DB_NAME,
+    location: 'default',
+  });
   await runMigrations(_db);
   return _db;
 };

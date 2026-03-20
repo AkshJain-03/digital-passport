@@ -16,8 +16,6 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>Authenticate to use Sovereign Trust Passport</string>
 
 	<key>NSCameraUsageDescription</key>
 	<string>Scan credentials and products</string>

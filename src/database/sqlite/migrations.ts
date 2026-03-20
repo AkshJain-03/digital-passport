@@ -8,8 +8,10 @@
  * the runner is idempotent — safe to call on every app launch.
  */
 
-import type { SQLiteDatabase } from 'react-native-sqlite-storage';
 import { ALL_MIGRATIONS }      from './schema';
+
+type SQLiteDatabase = any;
+type SQLiteTransaction = any;
 
 // ─── Migrations registry ──────────────────────────────────────────────────────
 
@@ -51,7 +53,7 @@ export const runMigrations = async (db: SQLiteDatabase): Promise<void> => {
   const pending = MIGRATIONS.filter(m => m.version > currentVersion);
 
   for (const migration of pending) {
-    await db.transaction(async tx => {
+    await db.transaction(async (tx: SQLiteTransaction) => {
       for (const statement of migration.sql) {
         await tx.executeSql(statement);
       }

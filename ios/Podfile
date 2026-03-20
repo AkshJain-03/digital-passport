@@ -15,6 +15,9 @@ platform :ios, min_ios_version_supported
 
 prepare_react_native_project!
 
+# Required by react-native-vision-camera for QR/Barcode code scanner support.
+$VCEnableCodeScanner = true
+
 # Optional: frameworks support (keep as-is unless you KNOW you need it)
 linkage = ENV['USE_FRAMEWORKS']
 if linkage

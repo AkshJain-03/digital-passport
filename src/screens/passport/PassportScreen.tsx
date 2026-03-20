@@ -25,6 +25,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors }              from '../../theme/colors';
 import { radius }              from '../../theme/radius';
@@ -44,6 +46,7 @@ import { IdentityStats }         from './components/IdentityStats';
 import { TrustScoreRing }        from './components/TrustScoreRing';
 import { CredentialQRSheet }     from '../credentials/components/CredentialQRSheet';
 import { CredentialDetailSheet } from '../credentials/components/CredentialDetailSheet';
+import { ROUTES, type RootStackParamList } from '../../app/routes';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const t = (require('../../theme/typography').typography) as Record<string, any>;
@@ -58,11 +61,12 @@ const typo = {
   button:   t.buttonXs ?? t.button   ?? {},
 };
 
-const TAB_CLEARANCE = Platform.OS === 'ios' ? 110 : 96;
+const TAB_CLEARANCE = Platform.OS === 'ios' ? 128 : 112;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const PassportScreen: React.FC = () => {
+  const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const {
     credentials, isLoading, error,
     trustScore, verifiedCount,
@@ -117,7 +121,11 @@ export const PassportScreen: React.FC = () => {
           <Text style={styles.greeting}>Your Identity</Text>
           <Text style={styles.pageTitle}>Sovereign Passport</Text>
         </View>
-        <TouchableOpacity style={styles.settingsBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.settingsBtn}
+          activeOpacity={0.7}
+          onPress={() => nav.navigate(ROUTES.SETTINGS)}
+        >
           <Text style={styles.settingsIcon}>⚙</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -336,15 +344,15 @@ const hwStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: {
     flex:            1,
-    backgroundColor: colors.bg.base,
-    paddingTop:      Platform.OS === 'ios' ? 60 : 40,
+    backgroundColor: 'transparent',
+    paddingTop:      Platform.OS === 'ios' ? 66 : 46,
   },
   pageHeader: {
     flexDirection:     'row',
     justifyContent:    'space-between',
     alignItems:        'flex-end',
-    paddingHorizontal: 16,
-    marginBottom:      16,
+    paddingHorizontal: 20,
+    marginBottom:      20,
   },
   greeting: {
     ...typo.caption,
@@ -364,16 +372,16 @@ const styles = StyleSheet.create({
     justifyContent:  'center',
   },
   settingsIcon: { fontSize: 16, color: colors.text.tertiary },
-  scrollContent: { paddingTop: 4 },
-  section:       { marginTop: 20 },
+  scrollContent: { paddingTop: 8 },
+  section:       { marginTop: 24 },
 
   // Trust ring section
   ringSection: {
     flexDirection:     'row',
     alignItems:        'center',
     marginTop:         24,
-    paddingHorizontal: 16,
-    gap:               20,
+    paddingHorizontal: 20,
+    gap:               24,
   },
   ringMeta:      { flex: 1 },
   ringMetaTitle: { ...typo.title3, color: colors.text.primary, marginBottom: 6 },
@@ -381,8 +389,8 @@ const styles = StyleSheet.create({
 
   // Mini rows
   credList: {
-    paddingHorizontal: 16,
-    gap:               8,
+    paddingHorizontal: 20,
+    gap:               10,
   },
   miniRow: {
     flexDirection:    'row',
@@ -421,7 +429,7 @@ const styles = StyleSheet.create({
   },
 
   // Hardware card
-  hwCard:        { marginHorizontal: 16 },
+  hwCard:        { marginHorizontal: 20 },
   hwHeader: {
     flexDirection: 'row',
     alignItems:    'center',
